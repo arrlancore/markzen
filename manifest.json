@@ -1,0 +1,27 @@
+{
+  "manifest_version": 3,
+  "name": "MarkZen",
+  "version": "1.0.0",
+  "description": "Kanban-style bookmark manager with enhanced new tab experience",
+  "permissions": ["storage", "tabs", "bookmarks"],
+  "action": {
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "assets/images/icon16.png",
+      "48": "assets/images/icon48.png",
+      "128": "assets/images/icon128.png"
+    }
+  },
+  "icons": {
+    "16": "assets/images/icon16.png",
+    "48": "assets/images/icon48.png",
+    "128": "assets/images/icon128.png"
+  },
+  "chrome_url_overrides": {
+    "newtab": "newtab.html"
+  },
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  }
+}
