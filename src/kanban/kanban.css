@@ -214,6 +214,7 @@ body {
   background-color: var(--color-background-subtle);
   padding: 2px 8px;
   border-radius: 12px;
+  margin-left: 2px;
 }
 
 .column-actions {

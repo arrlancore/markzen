@@ -7,6 +7,7 @@ import * as dataService from "./data";
 import { createColumnElement } from "./component-factory";
 import { setupDragAndDrop, cleanupDragAndDrop } from "./drag-drop";
 import * as modals from "./modals";
+import themeService from "@/utils/theme-service";
 
 // Current application state
 let state: KanbanState = {
@@ -25,6 +26,7 @@ async function initKanban(): Promise<void> {
     await loadData();
 
     // Render UI
+    await themeService.applyThemeFromSettings();
     renderWorkspaceSelector();
     renderKanbanBoard();
 

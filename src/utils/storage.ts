@@ -10,8 +10,12 @@ export interface StorageData {
   settings: AppSettings;
 }
 
+// Update this in src/utils/storage.ts
+
 export interface AppSettings {
   theme: "light" | "dark" | "system";
+  // Keep these properties for backward compatibility
+  // but we won't expose them in the UI anymore
   newtabBackground: "color" | "image" | "unsplash";
   unsplashCategory?: string;
   backgroundColor?: string;
@@ -29,7 +33,7 @@ const defaultSettings: AppSettings = {
   showClock: true,
   showDate: true,
   showTopBookmarks: true,
-  topBookmarksCount: 10,
+  topBookmarksCount: 3, // Changed from 10 to 3 to match the actual implementation
   showFavicons: true,
 };
 

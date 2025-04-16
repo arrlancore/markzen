@@ -4,6 +4,7 @@ import storageService from "../utils/storage";
 import analyticsService from "../utils/analytics";
 import { format } from "date-fns";
 import backgroundImages from "./backgroundImages";
+import themeService from "@/utils/theme-service";
 
 // DOM Elements
 const showKanbanBtn = document.getElementById(
@@ -32,6 +33,7 @@ let currentBackgroundImage: {
 // Initialize new tab page
 async function initNewTab() {
   try {
+    await themeService.applyThemeFromSettings();
     // Set random background
     setRandomBackground();
 

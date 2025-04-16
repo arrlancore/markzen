@@ -4,6 +4,7 @@ import { Workspace } from "../models/workspace";
 import { Bookmark } from "../models/bookmark";
 import storageService from "../utils/storage";
 import analyticsService from "../utils/analytics";
+import themeService from "@/utils/theme-service";
 
 // DOM Elements
 const showKanbanBtn = document.getElementById(
@@ -53,6 +54,7 @@ async function getCurrentPageData(): Promise<NewBookmarkData> {
 // Initialize popup
 async function initPopup() {
   try {
+    await themeService.applyThemeFromSettings();
     // Load workspaces
     await loadWorkspaces();
 

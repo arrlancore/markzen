@@ -49,6 +49,7 @@ markzen/
 │   ├── utils/                # Utility functions
 │   │   ├── storage.ts        # Storage management
 │   │   └── analytics.ts      # Usage analytics
+│   │   └── theme-service.ts  # Service for managing theme
 │   └── models/               # Data models
 │       ├── bookmark.ts       # Bookmark model
 │       └── workspace.ts      # Workspace model

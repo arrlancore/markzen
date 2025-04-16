@@ -2,48 +2,12 @@
 import "./settings.css";
 import { AppSettings } from "../utils/storage";
 import storageService from "../utils/storage";
+import themeService from "@/utils/theme-service";
 
 // DOM Elements
 const elements = {
   // Theme settings
   themeSelect: document.getElementById("theme-select") as HTMLSelectElement,
-
-  // New tab settings
-  backgroundSelect: document.getElementById(
-    "background-select"
-  ) as HTMLSelectElement,
-  unsplashCategoryContainer: document.getElementById(
-    "unsplash-category-container"
-  ) as HTMLDivElement,
-  unsplashCategorySelect: document.getElementById(
-    "unsplash-category-select"
-  ) as HTMLSelectElement,
-  backgroundColorContainer: document.getElementById(
-    "background-color-container"
-  ) as HTMLDivElement,
-  backgroundColor: document.getElementById(
-    "background-color"
-  ) as HTMLInputElement,
-  showClockToggle: document.getElementById(
-    "show-clock-toggle"
-  ) as HTMLInputElement,
-  showDateToggle: document.getElementById(
-    "show-date-toggle"
-  ) as HTMLInputElement,
-  showTopBookmarksToggle: document.getElementById(
-    "show-top-bookmarks-toggle"
-  ) as HTMLInputElement,
-  topBookmarksCountContainer: document.getElementById(
-    "top-bookmarks-count-container"
-  ) as HTMLDivElement,
-  topBookmarksCount: document.getElementById(
-    "top-bookmarks-count"
-  ) as HTMLInputElement,
-
-  // Bookmark settings
-  showFaviconsToggle: document.getElementById(
-    "show-favicons-toggle"
-  ) as HTMLInputElement,
 
   // Data management
   exportDataBtn: document.getElementById(
@@ -87,8 +51,8 @@ async function initSettings(): Promise<void> {
     // Set up event listeners
     setupEventListeners();
 
-    // Initialize UI state based on settings
-    updateDependentControls();
+    // Apply current theme
+    themeService.applyTheme(currentSettings.theme);
   } catch (error) {
     showNotification(
       `Error loading settings: ${(error as Error).message}`,
@@ -103,23 +67,6 @@ async function initSettings(): Promise<void> {
 function applySettingsToForm(): void {
   // Theme settings
   elements.themeSelect.value = currentSettings.theme;
-
-  // New tab settings
-  elements.backgroundSelect.value = currentSettings.newtabBackground;
-  if (currentSettings.unsplashCategory) {
-    elements.unsplashCategorySelect.value = currentSettings.unsplashCategory;
-  }
-  if (currentSettings.backgroundColor) {
-    elements.backgroundColor.value = currentSettings.backgroundColor;
-  }
-  elements.showClockToggle.checked = currentSettings.showClock;
-  elements.showDateToggle.checked = currentSettings.showDate;
-  elements.showTopBookmarksToggle.checked = currentSettings.showTopBookmarks;
-  elements.topBookmarksCount.value =
-    currentSettings.topBookmarksCount.toString();
-
-  // Bookmark settings
-  elements.showFaviconsToggle.checked = currentSettings.showFavicons;
 }
 
 /**
@@ -128,24 +75,6 @@ function applySettingsToForm(): void {
 function setupEventListeners(): void {
   // Theme settings
   elements.themeSelect.addEventListener("change", saveSettings);
-
-  // New tab settings
-  elements.backgroundSelect.addEventListener("change", () => {
-    updateDependentControls();
-    saveSettings();
-  });
-  elements.unsplashCategorySelect.addEventListener("change", saveSettings);
-  elements.backgroundColor.addEventListener("change", saveSettings);
-  elements.showClockToggle.addEventListener("change", saveSettings);
-  elements.showDateToggle.addEventListener("change", saveSettings);
-  elements.showTopBookmarksToggle.addEventListener("change", () => {
-    updateDependentControls();
-    saveSettings();
-  });
-  elements.topBookmarksCount.addEventListener("change", saveSettings);
-
-  // Bookmark settings
-  elements.showFaviconsToggle.addEventListener("change", saveSettings);
 
   // Data management
   elements.exportDataBtn.addEventListener("click", exportData);
@@ -167,62 +96,15 @@ function setupEventListeners(): void {
 }
 
 /**
- * Update dependent controls based on current settings
- */
-function updateDependentControls(): void {
-  // Background type dependent controls
-  const backgroundType = elements.backgroundSelect.value;
-  elements.unsplashCategoryContainer.classList.toggle(
-    "hidden",
-    backgroundType !== "unsplash"
-  );
-  elements.backgroundColorContainer.classList.toggle(
-    "hidden",
-    backgroundType !== "color"
-  );
-
-  // Top bookmarks dependent controls
-  const showTopBookmarks = elements.showTopBookmarksToggle.checked;
-  elements.topBookmarksCountContainer.classList.toggle(
-    "hidden",
-    !showTopBookmarks
-  );
-}
-
-/**
  * Save settings
  */
 async function saveSettings(): Promise<void> {
   try {
-    // Validate top bookmarks count
-    const topBookmarksCount = parseInt(elements.topBookmarksCount.value);
-    if (
-      isNaN(topBookmarksCount) ||
-      topBookmarksCount < 1 ||
-      topBookmarksCount > 20
-    ) {
-      elements.topBookmarksCount.value = "10";
-    }
-
     // Update settings
     const updatedSettings: AppSettings = {
+      ...currentSettings,
       // Theme settings
       theme: elements.themeSelect.value as "light" | "dark" | "system",
-
-      // New tab settings
-      newtabBackground: elements.backgroundSelect.value as
-        | "color"
-        | "image"
-        | "unsplash",
-      unsplashCategory: elements.unsplashCategorySelect.value,
-      backgroundColor: elements.backgroundColor.value,
-      showClock: elements.showClockToggle.checked,
-      showDate: elements.showDateToggle.checked,
-      showTopBookmarks: elements.showTopBookmarksToggle.checked,
-      topBookmarksCount: parseInt(elements.topBookmarksCount.value),
-
-      // Bookmark settings
-      showFavicons: elements.showFaviconsToggle.checked,
     };
 
     // Save to storage
@@ -230,6 +112,9 @@ async function saveSettings(): Promise<void> {
 
     // Update current settings
     currentSettings = updatedSettings;
+
+    // Apply theme immediately
+    themeService.applyTheme(updatedSettings.theme);
 
     showNotification("Settings saved successfully", "success");
   } catch (error) {
@@ -343,7 +228,6 @@ async function importData(): Promise<void> {
         // Reload form with new settings
         currentSettings = jsonData.settings;
         applySettingsToForm();
-        updateDependentControls();
       } catch (error) {
         showNotification(
           `Error parsing backup file: ${(error as Error).message}`,
@@ -386,7 +270,6 @@ async function resetData(): Promise<void> {
 
     // Apply settings to form
     applySettingsToForm();
-    updateDependentControls();
 
     showNotification("All data has been reset to defaults", "success");
   } catch (error) {
