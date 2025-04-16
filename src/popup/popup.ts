@@ -16,9 +16,6 @@ const addBookmarkBtn = document.getElementById(
 const workspacesList = document.getElementById(
   "workspaces-list"
 ) as HTMLDivElement;
-const recentBookmarksList = document.getElementById(
-  "recent-bookmarks-list"
-) as HTMLDivElement;
 const settingsBtn = document.getElementById(
   "settings-btn"
 ) as HTMLButtonElement;
@@ -58,9 +55,6 @@ async function initPopup() {
     // Load workspaces
     await loadWorkspaces();
 
-    // Load recent bookmarks
-    await loadRecentBookmarks();
-
     // Add event listeners
     addEventListeners();
   } catch (error) {
@@ -76,17 +70,22 @@ async function loadWorkspaces() {
   try {
     const workspaces = await storageService.getWorkspaces();
     const workspaceSettings = await storageService.getWorkspaceSettings();
-    const activeWorkspaceId = workspaceSettings.lastVisitedWorkspaceId;
+    // Get the active workspace ID properly
+    const activeWorkspaceId = workspaceSettings?.lastVisitedWorkspaceId;
 
     // Clear loading placeholder
     workspacesList.innerHTML = "";
 
-    // Create workspace items
+    // Create workspace items and ensure active state is set
     Object.values(workspaces).forEach((workspace: Workspace) => {
       const workspaceItem = document.createElement("div");
-      workspaceItem.className = `workspace-item ${
-        workspace.id === activeWorkspaceId ? "active" : ""
-      }`;
+      workspaceItem.className = "workspace-item";
+
+      // Add active class if this is the active workspace
+      if (workspace.id === activeWorkspaceId) {
+        workspaceItem.classList.add("active");
+      }
+
       workspaceItem.textContent = workspace.name;
       workspaceItem.dataset.id = workspace.id;
 
@@ -97,70 +96,14 @@ async function loadWorkspaces() {
 
       workspacesList.appendChild(workspaceItem);
     });
+
+    // If no workspaces found
+    if (Object.keys(workspaces).length === 0) {
+      workspacesList.innerHTML = `<div class="workspace-empty">No workspaces found</div>`;
+    }
   } catch (error) {
     workspacesList.innerHTML = `<div class="workspace-error">Error loading workspaces</div>`;
     console.error("Error loading workspaces:", error);
-  }
-}
-
-// Load recent bookmarks
-async function loadRecentBookmarks() {
-  try {
-    const recentBookmarks = await analyticsService.getRecentlyUsedBookmarks(5);
-
-    // Clear loading placeholder
-    recentBookmarksList.innerHTML = "";
-
-    if (recentBookmarks.length === 0) {
-      recentBookmarksList.innerHTML =
-        '<div class="no-bookmarks">No recent bookmarks</div>';
-      return;
-    }
-
-    // Create bookmark items
-    recentBookmarks.forEach((bookmark: Bookmark) => {
-      const bookmarkItem = document.createElement("div");
-      bookmarkItem.className = "bookmark-item";
-      bookmarkItem.dataset.id = bookmark.id;
-      bookmarkItem.dataset.url = bookmark.url;
-
-      // Create favicon element
-      const favicon = document.createElement("img");
-      favicon.className = "bookmark-favicon";
-      favicon.src = bookmark.favicon || "../assets/images/default-favicon.png";
-      favicon.alt = "";
-
-      // Create bookmark info container
-      const bookmarkInfo = document.createElement("div");
-      bookmarkInfo.className = "bookmark-info";
-
-      // Create title element
-      const title = document.createElement("div");
-      title.className = "bookmark-title";
-      title.textContent = bookmark.title;
-
-      // Create URL element
-      const url = document.createElement("div");
-      url.className = "bookmark-url";
-      url.textContent = bookmark.url;
-
-      // Append elements
-      bookmarkInfo.appendChild(title);
-      bookmarkInfo.appendChild(url);
-
-      bookmarkItem.appendChild(favicon);
-      bookmarkItem.appendChild(bookmarkInfo);
-
-      // Add click event to open bookmark
-      bookmarkItem.addEventListener("click", () =>
-        openBookmark(bookmark.id, bookmark.url)
-      );
-
-      recentBookmarksList.appendChild(bookmarkItem);
-    });
-  } catch (error) {
-    recentBookmarksList.innerHTML = `<div class="bookmarks-error">Error loading bookmarks</div>`;
-    console.error("Error loading recent bookmarks:", error);
   }
 }
 
@@ -326,10 +269,22 @@ function showBookmarkModal(
   // If multiple columns, add selection handling
   if (Object.keys(columns).length > 1) {
     const columnOptions = modal.querySelectorAll(".column-option");
+
+    // Select first column by default
+    columnOptions[0]?.classList.add("selected");
+
     columnOptions.forEach((option) => {
       option.addEventListener("click", () => {
+        // Remove selected class from all options
         columnOptions.forEach((opt) => opt.classList.remove("selected"));
+        // Add selected class to clicked option
         option.classList.add("selected");
+
+        // Optional: Show visual feedback
+        showNotification(
+          `Selected column: ${option.textContent?.trim()}`,
+          "success"
+        );
       });
     });
   }

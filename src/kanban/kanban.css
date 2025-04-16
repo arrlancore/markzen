@@ -702,70 +702,6 @@ body {
   }
 }
 
-/* Dark theme */
-@media (prefers-color-scheme: dark) {
-  :root {
-    --color-background: #1e1e2e;
-    --color-background-subtle: #2a2a3c;
-    --color-border: #383850;
-    --color-text: #e2e8f0;
-    --color-text-light: #94a3b8;
-    --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.2);
-    --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -1px rgba(0, 0, 0, 0.15);
-    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.3), 0 4px 6px -2px rgba(0, 0, 0, 0.15);
-  }
-  
-  .icon-button,
-  .action-button,
-  .workspace-select {
-    background-color: var(--color-background);
-    color: var(--color-text);
-  }
-  
-  .icon-button:hover,
-  .action-button:hover {
-    background-color: var(--color-background-subtle);
-  }
-  
-  .secondary-button {
-    background-color: #383850;
-    color: var(--color-text);
-  }
-  
-  .secondary-button:hover {
-    background-color: #454560;
-  }
-  
-  .bookmark-card,
-  .kanban-column,
-  .modal-container {
-    background-color: var(--color-background);
-    border-color: var(--color-border);
-  }
-  
-  .bookmark-menu-dropdown {
-    background-color: #2a2a3c;
-    border-color: var(--color-border);
-  }
-  
-  .bookmark-tag,
-  .column-count {
-    background-color: #383850;
-    color: var(--color-text-light);
-  }
-  
-  .add-bookmark-btn {
-    background-color: #383850;
-    border-color: #454560;
-    color: var(--color-text-light);
-  }
-  
-  .add-bookmark-btn:hover {
-    background-color: #454560;
-    color: var(--color-text);
-  }
-}
-
 /* Styles for delete confirmation modal */
 .delete-details {
   margin-top: 16px;
@@ -816,8 +752,7 @@ body {
   }
 }
 
-Add or update these styles */
-
+/* Add or update these styles */
 .drop-placeholder {
   height: 5px;
   background-color: var(--color-primary);
@@ -853,4 +788,66 @@ Add or update these styles */
   padding-top: 14px;
   padding-bottom: 14px;
   box-shadow: inset 0 0 10px rgba(59, 130, 246, 0.1);
+}
+
+/* Remove the @media query and replace with data-theme selector */
+[data-theme="dark"] {
+  --color-background: #1e1e2e;
+  --color-background-subtle: #2a2a3c;
+  --color-border: #383850;
+  --color-text: #e2e8f0;
+  --color-text-light: #94a3b8;
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.2);
+  --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -1px rgba(0, 0, 0, 0.15);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.3), 0 4px 6px -2px rgba(0, 0, 0, 0.15);
+}
+
+[data-theme="dark"] .icon-button,
+[data-theme="dark"] .action-button,
+[data-theme="dark"] .workspace-select {
+  background-color: var(--color-background);
+  color: var(--color-text);
+}
+
+[data-theme="dark"] .icon-button:hover,
+[data-theme="dark"] .action-button:hover {
+  background-color: var(--color-background-subtle);
+}
+
+[data-theme="dark"] .secondary-button {
+  background-color: #383850;
+  color: var(--color-text);
+}
+
+[data-theme="dark"] .secondary-button:hover {
+  background-color: #454560;
+}
+
+[data-theme="dark"] .bookmark-card,
+[data-theme="dark"] .kanban-column,
+[data-theme="dark"] .modal-container {
+  background-color: var(--color-background);
+  border-color: var(--color-border);
+}
+
+[data-theme="dark"] .bookmark-menu-dropdown {
+  background-color: #2a2a3c;
+  border-color: var(--color-border);
+}
+
+[data-theme="dark"] .bookmark-tag,
+[data-theme="dark"] .column-count {
+  background-color: #383850;
+  color: var(--color-text-light);
+}
+
+[data-theme="dark"] .add-bookmark-btn {
+  background-color: #383850;
+  border-color: #454560;
+  color: var(--color-text-light);
+}
+
+[data-theme="dark"] .add-bookmark-btn:hover {
+  background-color: #454560;
+  color: var(--color-text);
 }

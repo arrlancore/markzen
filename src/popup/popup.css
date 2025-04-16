@@ -23,6 +23,8 @@
   --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
   --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
   --transition: all 0.2s ease;
+  --highlight-color: #e3f2fd;
+  --dark-highlight-color: #1e88e5;
 }
 
 body {
@@ -132,6 +134,7 @@ body {
   gap: 8px;
 }
 
+/* Base workspace item styles */
 .workspace-item {
   padding: 8px 12px;
   background-color: var(--color-background-subtle);
@@ -146,68 +149,16 @@ body {
   background-color: var(--color-border);
 }
 
+/* Active state styles - make more specific to override dark theme */
+[data-theme="dark"] .workspace-item.active,
 .workspace-item.active {
-  background-color: var(--color-primary);
-  color: white;
-  border-color: var(--color-primary);
-}
-
-.workspace-loading,
-.bookmarks-loading {
-  color: var(--color-text-light);
-  font-size: 13px;
-  font-style: italic;
-}
-
-/* Recent bookmarks section */
-.recent-bookmarks-list {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.bookmark-item {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 10px;
-  background-color: var(--color-background-subtle);
-  border-radius: var(--border-radius);
-  cursor: pointer;
-  transition: var(--transition);
-}
-
-.bookmark-item:hover {
-  background-color: var(--color-border);
-}
-
-.bookmark-favicon {
-  width: 16px;
-  height: 16px;
-  object-fit: contain;
-  flex-shrink: 0;
-}
-
-.bookmark-info {
-  flex: 1;
-  overflow: hidden;
-}
-
-.bookmark-title {
-  font-size: 13px;
+  background-color: var(--highlight-color, #e3f2fd);
   font-weight: 500;
-  color: var(--color-text);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 
-.bookmark-url {
-  font-size: 11px;
-  color: var(--color-text-light);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+/* Optional: Add a darker highlight color for dark theme */
+[data-theme="dark"] .workspace-item.active {
+  background-color: var(--dark-highlight-color, #1e88e5);
 }
 
 /* Footer styles */
@@ -328,6 +279,7 @@ body {
   margin-bottom: 16px;
 }
 
+/* Base column option styles */
 .column-option {
   padding: 8px 12px;
   border: 1px solid var(--color-border);
@@ -342,6 +294,19 @@ body {
 
 .column-option:hover {
   background-color: var(--color-border);
+}
+
+/* Active/Selected state for column options */
+[data-theme="dark"] .column-option.selected,
+.column-option.selected {
+  background-color: var(--highlight-color, #e3f2fd);
+  font-weight: 500;
+  border-color: var(--color-primary);
+}
+
+/* Optional: Add a darker highlight color for dark theme */
+[data-theme="dark"] .column-option.selected {
+  background-color: var(--dark-highlight-color, #1e88e5);
 }
 
 .column-option.selected {
@@ -480,23 +445,50 @@ body {
 }
 
 /* Dark theme support */
-@media (prefers-color-scheme: dark) {
-  :root {
-    --color-background: #1e1e2e;
-    --color-background-subtle: #2a2a3c;
-    --color-border: #383850;
-    --color-text: #e2e8f0;
-    --color-text-light: #94a3b8;
-    --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.2);
-    --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -1px rgba(0, 0, 0, 0.15);
-  }
-  
-  .secondary-button {
-    background-color: var(--color-background-subtle);
-    color: var(--color-text);
-  }
-  
-  .secondary-button:hover {
-    background-color: #3a3a4f;
-  }
+[data-theme="dark"] {
+  --color-background: #1e1e2e;
+  --color-background-subtle: #2a2a3c;
+  --color-border: #383850;
+  --color-text: #e2e8f0;
+  --color-text-light: #94a3b8;
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.2);
+  --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -1px rgba(0, 0, 0, 0.15);
+  --highlight-color: #1e88e5;
+  --dark-highlight-color: #1565c0;
+}
+
+[data-theme="dark"] .secondary-button {
+  background-color: var(--color-background-subtle);
+  color: var(--color-text);
+}
+
+[data-theme="dark"] .secondary-button:hover {
+  background-color: #3a3a4f;
+}
+
+[data-theme="dark"] .workspace-item,
+[data-theme="dark"] .column-option {
+  background-color: var(--color-background);
+  border-color: var(--color-border);
+}
+
+[data-theme="dark"] .workspace-item:hover,
+[data-theme="dark"] .column-option:hover {
+  background-color: var(--color-background-subtle);
+}
+
+[data-theme="dark"] .modal-content,
+[data-theme="dark"] .bookmark-modal-content {
+  background-color: var(--color-background);
+  border-color: var(--color-border);
+}
+
+[data-theme="dark"] .form-input {
+  background-color: var(--color-background);
+  border-color: var(--color-border);
+  color: var(--color-text);
+}
+
+[data-theme="dark"] .icon-button:hover {
+  background-color: var(--color-background-subtle);
 }
