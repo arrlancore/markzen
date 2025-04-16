@@ -815,9 +815,8 @@ body {
   }
 }
 
-/* Add these styles to your kanban.css file */
+Add or update these styles */
 
-/* Drop placeholder to show where the card will be inserted */
 .drop-placeholder {
   height: 5px;
   background-color: var(--color-primary);
@@ -827,6 +826,7 @@ body {
   animation: placeholder-pulse 1s infinite;
   position: relative;
   z-index: 10;
+  box-shadow: 0 0 5px rgba(59, 130, 246, 0.5);
 }
 
 @keyframes placeholder-pulse {
@@ -836,7 +836,7 @@ body {
   }
   50% {
     opacity: 1;
-    transform: scaleY(1.3);
+    transform: scaleY(1.5);
   }
   100% {
     opacity: 0.7;
@@ -844,49 +844,12 @@ body {
   }
 }
 
-/* Enhance the dragging styles */
-.bookmark-card.dragging {
-  opacity: 0.65;
-  transform: scale(0.98) rotate(1deg);
-  box-shadow: var(--shadow-lg);
-  cursor: grabbing;
-  z-index: 100;
-  position: relative;
-  background-color: rgba(59, 130, 246, 0.1); /* Highlight color */
-  border: 1.5px dashed var(--color-primary);
-}
-
-/* Style for column when being dragged over */
 .column-body.dragging-over {
-  background-color: var(--color-background-subtle);
+  background-color: rgba(59, 130, 246, 0.05);
   border-radius: var(--border-radius);
   transition: background-color 0.2s ease;
   border: 2px dashed var(--color-primary);
   padding-top: 14px;
   padding-bottom: 14px;
   box-shadow: inset 0 0 10px rgba(59, 130, 246, 0.1);
-}
-
-/* Make sure cards have some spacing for easier drag and drop */
-.bookmark-card {
-  margin-bottom: 12px;
-  transition: transform 0.15s ease, box-shadow 0.15s ease;
-  position: relative;
-}
-
-.bookmark-card:hover {
-  cursor: grab;
-  transform: translateY(-2px);
-  box-shadow: var(--shadow);
-}
-
-/* Add a subtle indicator when hovering over cards that they can be dragged */
-.bookmark-card:hover::before {
-  content: "≡";
-  position: absolute;
-  top: 5px;
-  right: 5px;
-  color: var(--color-text-light);
-  opacity: 0.7;
-  font-size: 14px;
 }

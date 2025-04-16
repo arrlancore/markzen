@@ -257,12 +257,9 @@ export async function addCurrentPage(columnId?: string): Promise<void> {
   });
 }
 
-/**
- * Reorder a bookmark within the same column
- * @param bookmarkId The ID of the bookmark to reorder
- * @param columnId The ID of the column
- * @param targetIndex The target index position for the bookmark
- */
+// In src/kanban/data.ts
+// Replace the reorderBookmark function
+
 export async function reorderBookmark(
   bookmarkId: string,
   columnId: string,
@@ -272,7 +269,7 @@ export async function reorderBookmark(
     `Reordering bookmark ${bookmarkId} in column ${columnId} to index ${targetIndex}`
   );
 
-  // Get column
+  // Get column directly from storage for the most up-to-date data
   const column = await storageService.getColumn(columnId);
   if (!column) throw new Error("Column not found");
 
@@ -295,8 +292,12 @@ export async function reorderBookmark(
   const newBookmarkIds = [...column.bookmarkIds];
   newBookmarkIds.splice(currentIndex, 1);
 
-  // Insert at the new position
-  newBookmarkIds.splice(targetIndex, 0, bookmarkId);
+  // Insert at the new position, ensuring we're within bounds
+  const boundedTargetIndex = Math.max(
+    0,
+    Math.min(targetIndex, newBookmarkIds.length)
+  );
+  newBookmarkIds.splice(boundedTargetIndex, 0, bookmarkId);
 
   console.log(`New bookmark order: ${newBookmarkIds.join(", ")}`);
 
@@ -306,13 +307,10 @@ export async function reorderBookmark(
 
   console.log("Bookmark reordering complete");
 }
-/**
- * Move a bookmark from one column to another
- * @param bookmarkId The ID of the bookmark to move
- * @param sourceColumnId The ID of the source column
- * @param targetColumnId The ID of the target column
- * @param targetIndex The target index position in the target column (default: 0, which means at the top)
- */
+
+// In src/kanban/data.ts
+// Replace the moveBookmark function
+
 export async function moveBookmark(
   bookmarkId: string,
   sourceColumnId: string,
@@ -323,38 +321,50 @@ export async function moveBookmark(
     `Moving bookmark ${bookmarkId} from column ${sourceColumnId} to ${targetColumnId} at index ${targetIndex}`
   );
 
-  // Get the bookmark
+  // Get the bookmark and both columns directly from storage
   const bookmark = await storageService.getBookmark(bookmarkId);
   if (!bookmark) throw new Error("Bookmark not found");
 
-  // Get source and target columns
   const sourceColumn = await storageService.getColumn(sourceColumnId);
   const targetColumn = await storageService.getColumn(targetColumnId);
 
   if (!sourceColumn || !targetColumn) throw new Error("Column not found");
 
-  console.log(`Source column bookmarks: ${sourceColumn.bookmarkIds}`);
-  console.log(`Target column bookmarks: ${targetColumn.bookmarkIds}`);
+  console.log(
+    `Source column bookmarks: ${sourceColumn.bookmarkIds.join(", ")}`
+  );
+  console.log(
+    `Target column bookmarks: ${targetColumn.bookmarkIds.join(", ")}`
+  );
 
   // Update source column (remove bookmark ID)
   const sourceIndex = sourceColumn.bookmarkIds.indexOf(bookmarkId);
   if (sourceIndex === -1)
     throw new Error("Bookmark not found in source column");
 
-  sourceColumn.bookmarkIds.splice(sourceIndex, 1);
+  const newSourceBookmarkIds = [...sourceColumn.bookmarkIds];
+  newSourceBookmarkIds.splice(sourceIndex, 1);
+  sourceColumn.bookmarkIds = newSourceBookmarkIds;
   await storageService.saveColumn(sourceColumn);
 
-  console.log(`Updated source column bookmarks: ${sourceColumn.bookmarkIds}`);
+  console.log(
+    `Updated source column bookmarks: ${sourceColumn.bookmarkIds.join(", ")}`
+  );
 
   // Update target column (add bookmark ID at the specified position)
-  targetIndex = Math.max(
+  const boundedTargetIndex = Math.max(
     0,
     Math.min(targetIndex, targetColumn.bookmarkIds.length)
   );
-  targetColumn.bookmarkIds.splice(targetIndex, 0, bookmarkId);
+
+  const newTargetBookmarkIds = [...targetColumn.bookmarkIds];
+  newTargetBookmarkIds.splice(boundedTargetIndex, 0, bookmarkId);
+  targetColumn.bookmarkIds = newTargetBookmarkIds;
   await storageService.saveColumn(targetColumn);
 
-  console.log(`Updated target column bookmarks: ${targetColumn.bookmarkIds}`);
+  console.log(
+    `Updated target column bookmarks: ${targetColumn.bookmarkIds.join(", ")}`
+  );
 
   // Update bookmark's column ID
   bookmark.columnId = targetColumnId;

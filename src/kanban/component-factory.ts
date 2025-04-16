@@ -75,12 +75,7 @@ export function createColumnElement(
     // Get and sort bookmarks by creation date (newest first)
     const columnBookmarks = column.bookmarkIds
       .map((id) => state.bookmarks[id])
-      .filter((bookmark) => bookmark !== undefined)
-      .sort(
-        (a, b) =>
-          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-      );
-
+      .filter((bookmark) => bookmark !== undefined);
     // Create bookmark elements
     columnBookmarks.forEach((bookmark) => {
       const bookmarkElement = createBookmarkElement(bookmark, {

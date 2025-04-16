@@ -154,42 +154,51 @@ function handleDragEnd(): void {
   draggedElement = null;
 }
 
-/**
- * Handle drop event
- */
+// In src/kanban/drag-drop.ts
+// Replace the handleDrop function with this improved version
+
 async function handleDrop(e: DragEvent): Promise<void> {
   e.preventDefault();
 
   // Get target column
   const target = e.target as HTMLElement;
-  const columnBody = target.closest(".column-body");
+  const columnBody = target.closest(".column-body") as HTMLElement;
   if (!columnBody) return;
 
   // Get IDs
   const bookmarkId = e.dataTransfer?.getData("text/plain");
   if (!bookmarkId) return;
 
-  // Get column ID - important fix for dataset access
-  const targetColumnId = (columnBody as HTMLElement).getAttribute(
-    "data-column-id"
-  );
-  if (!targetColumnId) return;
+  // Get column IDs using dataset
+  const targetColumnId = columnBody.dataset.columnId;
+  if (!targetColumnId) {
+    console.error("Target column ID not found");
+    return;
+  }
 
   // Find the source column
   const bookmarkElement = document.querySelector(
     `.bookmark-card[data-id="${bookmarkId}"]`
   ) as HTMLElement | null;
 
-  if (!bookmarkElement) return;
+  if (!bookmarkElement) {
+    console.error("Bookmark element not found");
+    return;
+  }
 
   const sourceColumnBody = bookmarkElement.closest(
     ".column-body"
   ) as HTMLElement;
-  if (!sourceColumnBody) return;
+  if (!sourceColumnBody) {
+    console.error("Source column not found");
+    return;
+  }
 
-  // Fix for getting column ID
-  const sourceColumnId = sourceColumnBody.getAttribute("data-column-id");
-  if (!sourceColumnId) return;
+  const sourceColumnId = sourceColumnBody.dataset.columnId;
+  if (!sourceColumnId) {
+    console.error("Source column ID not found");
+    return;
+  }
 
   // Clean up visual elements
   columnBody.classList.remove("dragging-over");
@@ -206,6 +215,8 @@ async function handleDrop(e: DragEvent): Promise<void> {
     columnBody.querySelectorAll(".bookmark-card:not(.dragging)")
   );
 
+  console.log(`Target column has ${cards.length} cards`);
+
   // Find position based on cursor Y position
   for (let i = 0; i < cards.length; i++) {
     const rect = cards[i].getBoundingClientRect();
@@ -220,13 +231,15 @@ async function handleDrop(e: DragEvent): Promise<void> {
     }
   }
 
+  console.log(`Drop position: ${targetPosition}`);
+
   try {
     if (sourceColumnId === targetColumnId) {
       console.log(
         `Reordering bookmark ${bookmarkId} within column ${targetColumnId} to position ${targetPosition}`
       );
 
-      // Get the column data
+      // Get the column data directly from storage to ensure we're working with the latest data
       const column = await storageService.getColumn(targetColumnId);
       if (!column) throw new Error("Column not found");
 
@@ -234,25 +247,19 @@ async function handleDrop(e: DragEvent): Promise<void> {
       const currentIndex = column.bookmarkIds.indexOf(bookmarkId);
       if (currentIndex === -1) throw new Error("Bookmark not found in column");
 
-      console.log(`Current bookmark order: ${column.bookmarkIds.join(", ")}`);
+      console.log(`Current position in data: ${currentIndex}`);
       console.log(
-        `Current position: ${currentIndex}, Target position: ${targetPosition}`
+        `Bookmark IDs before reordering: ${column.bookmarkIds.join(", ")}`
       );
 
-      // Skip if no change in position
-      if (currentIndex === targetPosition) {
-        console.log("No change in position, skipping update");
-        return;
-      }
-
       // Create a new order array
-      const newOrder = [...column.bookmarkIds];
+      const newBookmarkIds = [...column.bookmarkIds];
 
       // Remove from current position
-      newOrder.splice(currentIndex, 1);
+      newBookmarkIds.splice(currentIndex, 1);
 
-      // If targeting a position after the current position,
-      // adjust for the removal
+      // Insert at new position with correction
+      // If the target is after the current position, adjust for the removal
       let adjustedPosition = targetPosition;
       if (targetPosition > currentIndex) {
         adjustedPosition--;
@@ -261,26 +268,28 @@ async function handleDrop(e: DragEvent): Promise<void> {
       // Ensure position is in bounds
       adjustedPosition = Math.max(
         0,
-        Math.min(adjustedPosition, newOrder.length)
+        Math.min(adjustedPosition, newBookmarkIds.length)
       );
 
-      console.log(`Adjusted target position: ${adjustedPosition}`);
-
       // Insert at new position
-      newOrder.splice(adjustedPosition, 0, bookmarkId);
+      newBookmarkIds.splice(adjustedPosition, 0, bookmarkId);
 
-      console.log(`New bookmark order: ${newOrder.join(", ")}`);
+      console.log(
+        `Bookmark IDs after reordering: ${newBookmarkIds.join(", ")}`
+      );
 
       // Update column
-      column.bookmarkIds = newOrder;
+      column.bookmarkIds = newBookmarkIds;
       await storageService.saveColumn(column);
 
-      console.log("Bookmark reordering complete");
+      console.log("Reordering complete");
     } else {
       // Moving between columns
       console.log(
         `Moving bookmark ${bookmarkId} from column ${sourceColumnId} to column ${targetColumnId} at position ${targetPosition}`
       );
+
+      // Handle cross-column movement differently to ensure data consistency
       await moveBookmark(
         bookmarkId,
         sourceColumnId,
@@ -289,7 +298,7 @@ async function handleDrop(e: DragEvent): Promise<void> {
       );
     }
 
-    // Refresh UI
+    // Refresh UI to reflect the changes
     const refreshEvent = new CustomEvent("kanban:refresh");
     document.dispatchEvent(refreshEvent);
   } catch (error) {
