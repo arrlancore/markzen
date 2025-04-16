@@ -1,0 +1,3 @@
+# MarkZen New Tab
+
+MarkZen New Tab transforms your browser's new tab experience into a clean, elegant workspace focused on simplicity and calm. Featuring beautiful full-screen background images, a prominently displayed clock, and quick access to your three most frequently used bookmarks, this minimalist design helps you stay focused while browsing. With just essential buttons for accessing your Kanban bookmark board and settings, MarkZen New Tab eliminates distractions and brings a sense of peace to your daily browsing routine.
