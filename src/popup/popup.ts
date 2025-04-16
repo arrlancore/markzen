@@ -28,15 +28,27 @@ const notificationMessage = document.getElementById(
 const notificationClose = document.getElementById(
   "notification-close"
 ) as HTMLButtonElement;
-const columnSelectModal = document.getElementById(
-  "column-select-modal"
-) as HTMLDivElement;
-const columnOptions = document.getElementById(
-  "column-options"
-) as HTMLDivElement;
-const cancelColumnSelect = document.getElementById(
-  "cancel-column-select"
-) as HTMLButtonElement;
+
+// Add new interface for bookmark data
+interface NewBookmarkData {
+  title: string;
+  url: string;
+  favicon?: string;
+}
+
+// Add new function to get current page data
+async function getCurrentPageData(): Promise<NewBookmarkData> {
+  return new Promise((resolve) => {
+    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+      const currentTab = tabs[0];
+      resolve({
+        title: currentTab.title || "",
+        url: currentTab.url || "",
+        favicon: currentTab.favIconUrl,
+      });
+    });
+  });
+}
 
 // Initialize popup
 async function initPopup() {
@@ -192,7 +204,6 @@ function openBookmark(bookmarkId: string, url: string) {
 // Add current page as bookmark
 async function addCurrentPage() {
   try {
-    // Get active workspace first
     const workspaceSettings = await storageService.getWorkspaceSettings();
     const activeWorkspaceId = workspaceSettings.lastVisitedWorkspaceId;
 
@@ -201,68 +212,149 @@ async function addCurrentPage() {
       return;
     }
 
-    // Get columns for the active workspace
     const columns = await storageService.getColumns(activeWorkspaceId);
 
-    // Check if columns exist
     if (!columns || Object.keys(columns).length === 0) {
       showNotification("No columns found in the active workspace", "error");
       return;
     }
 
-    // If only one column exists, add directly to that column
-    if (Object.keys(columns).length === 1) {
-      addBookmarkToColumn(Object.keys(columns)[0]);
-      return;
-    }
+    // Get current page data
+    const pageData = await getCurrentPageData();
 
-    // If multiple columns exist, show the column selection modal
-    showColumnSelectionModal(columns);
+    // Show the bookmark modal
+    showBookmarkModal(pageData, columns);
   } catch (error) {
     showNotification(`Error: ${(error as Error).message}`, "error");
   }
 }
 
-function addBookmarkToColumn(columnId: string) {
+function showBookmarkModal(
+  pageData: NewBookmarkData,
+  columns: Record<string, any>
+) {
+  // Check if modal already exists and remove it
+  const existingModal = document.querySelector(".bookmark-modal");
+  if (existingModal) {
+    existingModal.remove();
+  }
+
+  const modal = document.createElement("div");
+  modal.className = "bookmark-modal";
+  modal.innerHTML = `
+    <div class="bookmark-modal-content">
+      <h3 class="modal-title">Add Bookmark</h3>
+      
+      <div class="form-group">
+        <label for="bookmark-title" class="form-label">Title *</label>
+        <input 
+          type="text" 
+          id="bookmark-title" 
+          class="form-input"
+          value="${pageData.title}" 
+          placeholder="Enter bookmark title"
+          required
+        >
+      </div>
+
+      ${
+        Object.keys(columns).length > 1
+          ? `
+        <div class="form-group">
+          <label class="form-label">Select Column *</label>
+          <div class="column-options" id="modal-column-options">
+            ${Object.entries(columns)
+              .map(
+                ([columnId, column]) => `
+                <button class="column-option" data-column-id="${columnId}">
+                  ${column.title || "Unnamed Column"}
+                </button>
+              `
+              )
+              .join("")}
+          </div>
+        </div>
+      `
+          : ""
+      }
+      
+      <div class="modal-actions">
+        <button id="cancel-bookmark" class="btn btn-secondary">Cancel</button>
+        <button id="save-bookmark" class="btn btn-primary">Add Bookmark</button>
+      </div>
+    </div>
+  `;
+
+  document.body.appendChild(modal);
+
+  const titleInput = modal.querySelector("#bookmark-title") as HTMLInputElement;
+  const cancelBtn = modal.querySelector(
+    "#cancel-bookmark"
+  ) as HTMLButtonElement;
+  const saveBtn = modal.querySelector("#save-bookmark") as HTMLButtonElement;
+
+  cancelBtn.addEventListener("click", () => {
+    const modals = document.querySelectorAll(".bookmark-modal");
+    modals.forEach((modal) => modal.remove());
+  });
+
+  saveBtn.addEventListener("click", () => {
+    const newTitle = titleInput.value.trim();
+    if (!newTitle) {
+      showNotification("Title cannot be empty", "error");
+      return;
+    }
+
+    const columnId =
+      Object.keys(columns).length === 1
+        ? Object.keys(columns)[0]
+        : (modal.querySelector(".column-option.selected") as HTMLElement)
+            ?.dataset.columnId;
+
+    if (!columnId) {
+      showNotification("Please select a column", "error");
+      return;
+    }
+
+    addBookmarkToColumnWithTitle(columnId, newTitle, pageData);
+    const modals = document.querySelectorAll(".bookmark-modal");
+    modals.forEach((modal) => modal.remove());
+  });
+
+  // If multiple columns, add selection handling
+  if (Object.keys(columns).length > 1) {
+    const columnOptions = modal.querySelectorAll(".column-option");
+    columnOptions.forEach((option) => {
+      option.addEventListener("click", () => {
+        columnOptions.forEach((opt) => opt.classList.remove("selected"));
+        option.classList.add("selected");
+      });
+    });
+  }
+}
+
+function addBookmarkToColumnWithTitle(
+  columnId: string,
+  title: string,
+  pageData: NewBookmarkData
+) {
   chrome.runtime.sendMessage(
     {
       type: "ADD_CURRENT_PAGE",
       columnId: columnId,
-      workspaceId: storageService.getActiveWorkspaceId(), // Add workspace ID to the message
+      workspaceId: storageService.getActiveWorkspaceId(),
+      customTitle: title,
+      url: pageData.url,
+      favicon: pageData.favicon,
     },
     (response) => {
       if (response.success) {
-        showNotification("Page added to bookmarks", "success");
-        hideColumnSelectionModal();
+        showNotification("Bookmark added successfully", "success");
       } else {
         showNotification(`Error adding bookmark: ${response.error}`, "error");
       }
     }
   );
-}
-
-function showColumnSelectionModal(columns: Record<string, any>) {
-  // Clear previous options
-  columnOptions.innerHTML = "";
-
-  // Create column options
-  Object.entries(columns).forEach(([columnId, column]) => {
-    const option = document.createElement("button");
-    option.className = "column-option";
-    option.textContent = column.title || "Unnamed Column";
-    console.log({ columnId, column });
-    option.addEventListener("click", () => {
-      addBookmarkToColumn(columnId);
-    });
-    columnOptions.appendChild(option);
-  });
-
-  // Show modal
-  columnSelectModal.classList.remove("hidden");
-}
-
-function hideColumnSelectionModal() {
-  columnSelectModal.classList.add("hidden");
 }
 
 // Show Kanban board
@@ -307,9 +399,6 @@ function addEventListeners() {
   notificationClose.addEventListener("click", () => {
     notification.classList.add("hidden");
   });
-
-  // Cancel column selection
-  cancelColumnSelect.addEventListener("click", hideColumnSelectionModal);
 }
 
 // Initialize popup when DOM is loaded

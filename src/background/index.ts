@@ -54,7 +54,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         // Create new bookmark
         const newBookmark = {
           id: Date.now().toString(),
-          title: tab.title || "Untitled",
+          title: message.customTitle || tab.title || "Untitled",
           url: tab.url || "",
           favicon: tab.favIconUrl || "",
           createdAt: new Date().toISOString(),
