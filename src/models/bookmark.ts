@@ -6,6 +6,7 @@ export interface Bookmark {
   description?: string;
   tags?: string[];
   createdAt: string;
+  updatedAt?: string;
   lastVisited?: string;
   columnId: string;
   workspaceId: string;

@@ -5,6 +5,9 @@ import { Workspace } from "../models/workspace";
 // Define notification types
 export type NotificationType = "success" | "error" | "warning";
 
+// Define delete types
+export type DeleteType = "bookmark" | "column" | "workspace" | null;
+
 // Define state for the Kanban module
 export interface KanbanState {
   activeWorkspaceId: string;
@@ -19,4 +22,5 @@ export interface EditingState {
   currentColumnId: string | null;
   currentBookmarkId: string | null;
   currentColumnForBookmark: string | null;
+  deleteType: DeleteType;
 }

@@ -69,6 +69,29 @@ export const elements = {
     "delete-bookmark-btn"
   ) as HTMLButtonElement,
 
+  // Delete confirmation modal elements
+  deleteConfirmationModal: document.getElementById(
+    "delete-confirmation-modal"
+  ) as HTMLDivElement,
+  deleteConfirmationMessage: document.getElementById(
+    "delete-confirmation-message"
+  ) as HTMLParagraphElement,
+  deleteBookmarkDetails: document.getElementById(
+    "delete-bookmark-details"
+  ) as HTMLDivElement,
+  deleteBookmarkTitle: document.getElementById(
+    "delete-bookmark-title"
+  ) as HTMLDivElement,
+  deleteBookmarkUrl: document.getElementById(
+    "delete-bookmark-url"
+  ) as HTMLDivElement,
+  confirmDeleteBtn: document.getElementById(
+    "confirm-delete-btn"
+  ) as HTMLButtonElement,
+  cancelDeleteBtn: document.getElementById(
+    "cancel-delete-btn"
+  ) as HTMLButtonElement,
+
   // Notification elements
   notification: document.getElementById("notification") as HTMLDivElement,
   notificationMessage: document.getElementById(

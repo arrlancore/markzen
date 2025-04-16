@@ -764,3 +764,53 @@ body {
     color: var(--color-text);
   }
 }
+
+/* Styles for delete confirmation modal */
+.delete-details {
+  margin-top: 16px;
+  padding: 16px;
+  background-color: var(--color-background-subtle);
+  border-radius: var(--border-radius);
+  border: 1px solid var(--color-border);
+}
+
+.delete-detail-value {
+  font-size: 14px;
+  padding: 8px 12px;
+  background-color: var(--color-background);
+  border-radius: var(--border-radius);
+  border: 1px solid var(--color-border);
+  word-break: break-all;
+}
+
+/* Animation for the confirmation modal */
+#delete-confirmation-modal .modal-container {
+  animation: modal-slide-in 0.2s ease-out;
+}
+
+@keyframes modal-slide-in {
+  from {
+    transform: translateY(-20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+#confirm-delete-btn {
+  animation: delete-button-pulse 2s infinite;
+}
+
+@keyframes delete-button-pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4);
+  }
+  70% {
+    box-shadow: 0 0 0 5px rgba(239, 68, 68, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0);
+  }
+}

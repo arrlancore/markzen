@@ -7,9 +7,9 @@ import {
   confirmAction,
   showNotification,
 } from "./ui-utils";
-import { EditingState } from "./types";
+import { EditingState, DeleteType } from "./types";
 import * as dataService from "./data";
-import { Workspace } from "@/models/workspace";
+import { Workspace } from "../models/workspace";
 
 // Current editing state
 const editingState: EditingState = {
@@ -17,40 +17,10 @@ const editingState: EditingState = {
   currentColumnId: null,
   currentBookmarkId: null,
   currentColumnForBookmark: null,
+  deleteType: null,
 };
 
-/**
- * Initialize modal event handlers
- */
-export function initModalHandlers(): void {
-  // Save workspace button
-  elements.saveWorkspaceBtn.addEventListener("click", saveWorkspace);
-
-  // Delete workspace button
-  elements.deleteWorkspaceBtn.addEventListener("click", confirmDeleteWorkspace);
-
-  // Save column button
-  elements.saveColumnBtn.addEventListener("click", saveColumn);
-
-  // Delete column button
-  elements.deleteColumnBtn.addEventListener("click", confirmDeleteColumn);
-
-  // Save bookmark button
-  elements.saveBookmarkBtn.addEventListener("click", saveBookmark);
-
-  // Delete bookmark button
-  elements.deleteBookmarkBtn.addEventListener("click", confirmDeleteBookmark);
-
-  // Close modal buttons
-  elements.closeModalButtons.forEach((button) => {
-    button.addEventListener("click", () => {
-      closeModal(elements.workspaceModal);
-      closeModal(elements.columnModal);
-      closeModal(elements.bookmarkModal);
-      resetEditingState();
-    });
-  });
-}
+// We'll use the elements from elements.ts instead of declaring them again here
 
 /**
  * Reset editing state
@@ -60,6 +30,7 @@ function resetEditingState(): void {
   editingState.currentColumnId = null;
   editingState.currentBookmarkId = null;
   editingState.currentColumnForBookmark = null;
+  editingState.deleteType = null;
 }
 
 // Workspace modal functions
@@ -170,22 +141,58 @@ async function saveWorkspace(): Promise<void> {
 }
 
 /**
- * Confirm deletion of a workspace
+ * Open delete confirmation for workspace
  */
 async function confirmDeleteWorkspace(): Promise<void> {
   if (!editingState.currentWorkspaceId) return;
 
-  const confirmed = await confirmAction(
-    "Are you sure you want to delete this workspace? All columns and bookmarks in this workspace will be deleted."
-  );
+  try {
+    const data = await dataService.loadData();
+    const workspace = data.workspaces[editingState.currentWorkspaceId];
 
-  if (!confirmed) return;
+    if (!workspace) {
+      showNotification("Workspace not found", "error");
+      return;
+    }
+
+    // Hide bookmark details section
+    if (elements.deleteBookmarkDetails) {
+      elements.deleteBookmarkDetails.style.display = "none";
+    }
+
+    // Set message
+    if (elements.deleteConfirmationMessage) {
+      elements.deleteConfirmationMessage.textContent =
+        "Are you sure you want to delete this workspace? All columns and bookmarks in this workspace will be deleted.";
+    }
+
+    // Set delete type
+    editingState.deleteType = "workspace";
+
+    // Close edit modal and open confirmation modal
+    closeModal(elements.workspaceModal);
+    openModal(elements.deleteConfirmationModal);
+  } catch (error) {
+    showNotification(
+      `Error preparing delete confirmation: ${(error as Error).message}`,
+      "error"
+    );
+  }
+}
+
+/**
+ * Delete the workspace
+ */
+async function deleteWorkspace(): Promise<void> {
+  if (!editingState.currentWorkspaceId) return;
 
   try {
     await dataService.deleteWorkspace(editingState.currentWorkspaceId);
 
     // Close modal
-    closeModal(elements.workspaceModal);
+    if (elements.deleteConfirmationModal) {
+      closeModal(elements.deleteConfirmationModal);
+    }
     resetEditingState();
 
     showNotification("Workspace deleted successfully", "success");
@@ -304,16 +311,49 @@ async function saveColumn(): Promise<void> {
 }
 
 /**
- * Confirm deletion of a column
+ * Open delete confirmation for column
  */
 async function confirmDeleteColumn(): Promise<void> {
   if (!editingState.currentColumnId) return;
 
-  const confirmed = await confirmAction(
-    "Are you sure you want to delete this column? All bookmarks in this column will be deleted."
-  );
+  try {
+    const data = await dataService.loadData();
+    const column = data.columns[editingState.currentColumnId];
 
-  if (!confirmed) return;
+    if (!column) {
+      showNotification("Column not found", "error");
+      return;
+    }
+
+    // Hide bookmark details section
+    if (elements.deleteBookmarkDetails) {
+      elements.deleteBookmarkDetails.style.display = "none";
+    }
+
+    // Set message
+    if (elements.deleteConfirmationMessage) {
+      elements.deleteConfirmationMessage.textContent = `Are you sure you want to delete the column "${column.title}"? All bookmarks in this column will be deleted.`;
+    }
+
+    // Set delete type
+    editingState.deleteType = "column";
+
+    // Close edit modal and open confirmation modal
+    closeModal(elements.columnModal);
+    openModal(elements.deleteConfirmationModal);
+  } catch (error) {
+    showNotification(
+      `Error preparing delete confirmation: ${(error as Error).message}`,
+      "error"
+    );
+  }
+}
+
+/**
+ * Delete the column
+ */
+async function deleteColumn(): Promise<void> {
+  if (!editingState.currentColumnId) return;
 
   try {
     const data = await dataService.loadData();
@@ -323,7 +363,9 @@ async function confirmDeleteColumn(): Promise<void> {
     );
 
     // Close modal
-    closeModal(elements.columnModal);
+    if (elements.deleteConfirmationModal) {
+      closeModal(elements.deleteConfirmationModal);
+    }
     resetEditingState();
 
     showNotification("Column deleted successfully", "success");
@@ -348,6 +390,13 @@ export function openAddBookmarkModal(columnId: string): void {
   elements.bookmarkModalTitle.textContent = "Add Bookmark";
   elements.deleteBookmarkBtn.classList.add("hidden");
   editingState.currentColumnForBookmark = columnId;
+
+  // Clear previous values
+  elements.bookmarkTitle.value = "";
+  elements.bookmarkUrl.value = "";
+  elements.bookmarkDescription.value = "";
+  elements.bookmarkTags.value = "";
+
   openModal(elements.bookmarkModal);
 }
 
@@ -361,7 +410,10 @@ export function openEditBookmarkModal(
   bookmarks: Record<string, Bookmark>
 ): void {
   const bookmark = bookmarks[bookmarkId];
-  if (!bookmark) return;
+  if (!bookmark) {
+    showNotification("Bookmark not found", "error");
+    return;
+  }
 
   editingState.currentBookmarkId = bookmarkId;
   editingState.currentColumnForBookmark = bookmark.columnId;
@@ -429,6 +481,7 @@ async function saveBookmark(): Promise<void> {
         url,
         description: elements.bookmarkDescription.value.trim(),
         tags,
+        updatedAt: new Date().toISOString(),
       };
 
       await dataService.saveBookmark(updatedBookmark);
@@ -440,14 +493,25 @@ async function saveBookmark(): Promise<void> {
         return;
       }
 
+      // Try to get favicon from the URL
+      let favicon = "";
+      try {
+        // Extract domain for favicon
+        const urlObj = new URL(url);
+        favicon = `${urlObj.protocol}//${urlObj.hostname}/favicon.ico`;
+      } catch (e) {
+        console.error("Error generating favicon URL:", e);
+      }
+
       const newBookmark: Bookmark = {
         id: Date.now().toString(),
         title,
         url,
-        favicon: "", // Will be updated when visiting the page
+        favicon, // Basic favicon URL - will be updated when visiting the page
         description: elements.bookmarkDescription.value.trim(),
         tags,
         createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
         columnId: editingState.currentColumnForBookmark,
         workspaceId: data.activeWorkspaceId,
       };
@@ -481,16 +545,116 @@ async function saveBookmark(): Promise<void> {
 }
 
 /**
- * Confirm deletion of a bookmark
+ * Prepare for bookmark deletion directly from the delete menu
+ * @param bookmarkId ID of the bookmark to delete
+ * @param columnId ID of the column containing the bookmark
+ * @param bookmarks Record of all bookmarks
  */
-async function confirmDeleteBookmark(): Promise<void> {
+export async function confirmBookmarkDeletion(
+  bookmarkId: string,
+  columnId: string,
+  bookmarks: Record<string, Bookmark>
+): Promise<void> {
+  // Set state needed for deletion
+  editingState.currentBookmarkId = bookmarkId;
+  editingState.currentColumnForBookmark = columnId;
+
+  try {
+    const bookmark = bookmarks[bookmarkId];
+
+    if (!bookmark) {
+      showNotification("Bookmark not found", "error");
+      return;
+    }
+
+    // Show bookmark details section
+    if (elements.deleteBookmarkDetails) {
+      elements.deleteBookmarkDetails.style.display = "block";
+    }
+
+    // Set bookmark details
+    if (elements.deleteBookmarkTitle) {
+      elements.deleteBookmarkTitle.textContent = bookmark.title;
+    }
+
+    if (elements.deleteBookmarkUrl) {
+      elements.deleteBookmarkUrl.textContent = bookmark.url;
+    }
+
+    // Set message
+    if (elements.deleteConfirmationMessage) {
+      elements.deleteConfirmationMessage.textContent =
+        "Are you sure you want to delete this bookmark?";
+    }
+
+    // Set delete type
+    editingState.deleteType = "bookmark";
+
+    // Open confirmation modal
+    openModal(elements.deleteConfirmationModal);
+  } catch (error) {
+    showNotification(
+      `Error preparing delete confirmation: ${(error as Error).message}`,
+      "error"
+    );
+  }
+}
+/**
+ * Open delete confirmation for bookmark
+ */
+export async function confirmDeleteBookmark(): Promise<void> {
   if (!editingState.currentBookmarkId || !editingState.currentColumnForBookmark)
     return;
 
-  const confirmed = await confirmAction(
-    "Are you sure you want to delete this bookmark?"
-  );
-  if (!confirmed) return;
+  try {
+    const data = await dataService.loadData();
+    const bookmark = data.bookmarks[editingState.currentBookmarkId];
+
+    if (!bookmark) {
+      showNotification("Bookmark not found", "error");
+      return;
+    }
+
+    // Show bookmark details section
+    if (elements.deleteBookmarkDetails) {
+      elements.deleteBookmarkDetails.style.display = "block";
+    }
+
+    // Set bookmark details
+    if (elements.deleteBookmarkTitle) {
+      elements.deleteBookmarkTitle.textContent = bookmark.title;
+    }
+
+    if (elements.deleteBookmarkUrl) {
+      elements.deleteBookmarkUrl.textContent = bookmark.url;
+    }
+
+    // Set message
+    if (elements.deleteConfirmationMessage) {
+      elements.deleteConfirmationMessage.textContent =
+        "Are you sure you want to delete this bookmark?";
+    }
+
+    // Set delete type
+    editingState.deleteType = "bookmark";
+
+    // Close edit modal and open confirmation modal
+    closeModal(elements.bookmarkModal);
+    openModal(elements.deleteConfirmationModal);
+  } catch (error) {
+    showNotification(
+      `Error preparing delete confirmation: ${(error as Error).message}`,
+      "error"
+    );
+  }
+}
+
+/**
+ * Delete the bookmark
+ */
+async function deleteBookmark(): Promise<void> {
+  if (!editingState.currentBookmarkId || !editingState.currentColumnForBookmark)
+    return;
 
   try {
     await dataService.deleteBookmark(
@@ -499,7 +663,9 @@ async function confirmDeleteBookmark(): Promise<void> {
     );
 
     // Close modal
-    closeModal(elements.bookmarkModal);
+    if (elements.deleteConfirmationModal) {
+      closeModal(elements.deleteConfirmationModal);
+    }
     resetEditingState();
 
     showNotification("Bookmark deleted successfully", "success");
@@ -512,5 +678,96 @@ async function confirmDeleteBookmark(): Promise<void> {
       `Error deleting bookmark: ${(error as Error).message}`,
       "error"
     );
+  }
+}
+
+/**
+ * Handle confirmation action based on delete type
+ */
+async function handleDeleteConfirmation(): Promise<void> {
+  switch (editingState.deleteType) {
+    case "bookmark":
+      await deleteBookmark();
+      break;
+    case "column":
+      await deleteColumn();
+      break;
+    case "workspace":
+      await deleteWorkspace();
+      break;
+    default:
+      if (elements.deleteConfirmationModal) {
+        closeModal(elements.deleteConfirmationModal);
+      }
+      resetEditingState();
+      break;
+  }
+}
+
+/**
+ * Initialize modal event handlers
+ */
+export function initModalHandlers(): void {
+  // Save workspace button
+  elements.saveWorkspaceBtn.addEventListener("click", saveWorkspace);
+
+  // Delete workspace button
+  elements.deleteWorkspaceBtn.addEventListener("click", confirmDeleteWorkspace);
+
+  // Save column button
+  elements.saveColumnBtn.addEventListener("click", saveColumn);
+
+  // Delete column button
+  elements.deleteColumnBtn.addEventListener("click", confirmDeleteColumn);
+
+  // Save bookmark button
+  elements.saveBookmarkBtn.addEventListener("click", saveBookmark);
+
+  // Delete bookmark button
+  elements.deleteBookmarkBtn.addEventListener("click", confirmDeleteBookmark);
+
+  // Close modal buttons
+  elements.closeModalButtons.forEach((button) => {
+    button.addEventListener("click", () => {
+      closeModal(elements.workspaceModal);
+      closeModal(elements.columnModal);
+      closeModal(elements.bookmarkModal);
+      resetEditingState();
+    });
+  });
+
+  // Notification close button
+  elements.notificationClose?.addEventListener("click", () => {
+    elements.notification.classList.add("hidden");
+  });
+
+  // Delete confirmation modal handlers
+  if (elements.confirmDeleteBtn) {
+    elements.confirmDeleteBtn.addEventListener(
+      "click",
+      handleDeleteConfirmation
+    );
+  }
+
+  if (elements.cancelDeleteBtn) {
+    elements.cancelDeleteBtn.addEventListener("click", () => {
+      if (elements.deleteConfirmationModal) {
+        closeModal(elements.deleteConfirmationModal);
+      }
+      resetEditingState();
+    });
+  }
+
+  // Close button for delete confirmation modal
+  const deleteModalCloseBtn = elements.deleteConfirmationModal?.querySelector(
+    ".modal-close"
+  ) as HTMLButtonElement;
+  if (deleteModalCloseBtn) {
+    deleteModalCloseBtn.addEventListener("click", () => {
+      if (elements.deleteConfirmationModal) {
+        closeModal(elements.deleteConfirmationModal);
+      }
+      resetEditingState();
+    });
   }
 }

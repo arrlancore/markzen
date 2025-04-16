@@ -134,6 +134,9 @@ function setupEventListeners(): void {
 
   // Settings button
   elements.settingsBtn.addEventListener("click", handleOpenSettings);
+
+  // Add bookmark button (if it exists)
+  elements.addBookmarkBtn?.addEventListener("click", handleAddCurrentPage);
 }
 
 /**
@@ -215,3 +218,6 @@ document.addEventListener("DOMContentLoaded", initKanban);
 
 // Clean up when leaving the page
 window.addEventListener("beforeunload", cleanup);
+
+// Export the state for other modules to use when needed
+export { state };

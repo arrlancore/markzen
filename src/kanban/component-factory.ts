@@ -2,6 +2,7 @@
 import { Bookmark, Column } from "../models/bookmark";
 import { openBookmark } from "./data";
 import { KanbanState } from "./types";
+import * as modals from "./modals"; // Import modals directly to avoid circular dependency issues
 
 /**
  * Create a column element
@@ -83,8 +84,17 @@ export function createColumnElement(
     // Create bookmark elements
     columnBookmarks.forEach((bookmark) => {
       const bookmarkElement = createBookmarkElement(bookmark, {
-        editBookmark: callbacks.editColumn,
-        deleteBookmark: callbacks.editColumn,
+        editBookmark: (id) => {
+          modals.openEditBookmarkModal(id, state.bookmarks);
+        },
+        deleteBookmark: (id) => {
+          // Set up the necessary state and show delete modal
+          modals.confirmBookmarkDeletion(
+            id,
+            bookmark.columnId,
+            state.bookmarks
+          );
+        },
       });
       body.appendChild(bookmarkElement);
     });
