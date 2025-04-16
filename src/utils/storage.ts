@@ -96,8 +96,17 @@ class StorageService {
   }
 
   // Get all columns
-  async getColumns(): Promise<Record<string, Column>> {
+  async getColumns(workspaceId?: string): Promise<Record<string, Column>> {
     const columns = await this.get<Record<string, Column>>("columns");
+    if (workspaceId) {
+      return Object.values(columns || {})
+        .filter((column) => column.workspaceId === workspaceId)
+        .reduce((acc, column) => {
+          acc[column.id] = column;
+          return acc;
+        }, {} as Record<string, Column>);
+    }
+
     return columns || {};
   }
 
@@ -114,6 +123,11 @@ class StorageService {
     const columns = await this.getColumns();
     columns[column.id] = column;
     await this.set("columns", columns);
+  }
+
+  async getColumn(id: string): Promise<Column | undefined> {
+    const columns = await this.getColumns();
+    return columns[id];
   }
 
   // Delete a column
@@ -201,6 +215,11 @@ class StorageService {
   async getWorkspaceSettings(): Promise<WorkspaceSettings> {
     const settings = await this.get<WorkspaceSettings>("workspaceSettings");
     return settings || defaultWorkspaceSettings;
+  }
+
+  async getActiveWorkspaceId(): Promise<string> {
+    const settings = await this.getWorkspaceSettings();
+    return settings.lastVisitedWorkspaceId || "default";
   }
 
   // Update workspace settings

@@ -28,6 +28,15 @@ const notificationMessage = document.getElementById(
 const notificationClose = document.getElementById(
   "notification-close"
 ) as HTMLButtonElement;
+const columnSelectModal = document.getElementById(
+  "column-select-modal"
+) as HTMLDivElement;
+const columnOptions = document.getElementById(
+  "column-options"
+) as HTMLDivElement;
+const cancelColumnSelect = document.getElementById(
+  "cancel-column-select"
+) as HTMLButtonElement;
 
 // Initialize popup
 async function initPopup() {
@@ -181,14 +190,79 @@ function openBookmark(bookmarkId: string, url: string) {
 }
 
 // Add current page as bookmark
-function addCurrentPage() {
-  chrome.runtime.sendMessage({ type: "ADD_CURRENT_PAGE" }, (response) => {
-    if (response.success) {
-      showNotification("Page added to bookmarks", "success");
-    } else {
-      showNotification(`Error adding bookmark: ${response.error}`, "error");
+async function addCurrentPage() {
+  try {
+    // Get active workspace first
+    const workspaceSettings = await storageService.getWorkspaceSettings();
+    const activeWorkspaceId = workspaceSettings.lastVisitedWorkspaceId;
+
+    if (!activeWorkspaceId) {
+      showNotification("No active workspace found", "error");
+      return;
     }
+
+    // Get columns for the active workspace
+    const columns = await storageService.getColumns(activeWorkspaceId);
+
+    // Check if columns exist
+    if (!columns || Object.keys(columns).length === 0) {
+      showNotification("No columns found in the active workspace", "error");
+      return;
+    }
+
+    // If only one column exists, add directly to that column
+    if (Object.keys(columns).length === 1) {
+      addBookmarkToColumn(Object.keys(columns)[0]);
+      return;
+    }
+
+    // If multiple columns exist, show the column selection modal
+    showColumnSelectionModal(columns);
+  } catch (error) {
+    showNotification(`Error: ${(error as Error).message}`, "error");
+  }
+}
+
+function addBookmarkToColumn(columnId: string) {
+  chrome.runtime.sendMessage(
+    {
+      type: "ADD_CURRENT_PAGE",
+      columnId: columnId,
+      workspaceId: storageService.getActiveWorkspaceId(), // Add workspace ID to the message
+    },
+    (response) => {
+      if (response.success) {
+        showNotification("Page added to bookmarks", "success");
+        hideColumnSelectionModal();
+      } else {
+        showNotification(`Error adding bookmark: ${response.error}`, "error");
+      }
+    }
+  );
+}
+
+function showColumnSelectionModal(columns: Record<string, any>) {
+  // Clear previous options
+  columnOptions.innerHTML = "";
+
+  // Create column options
+  Object.entries(columns).forEach(([columnId, column]) => {
+    const option = document.createElement("button");
+    option.className = "column-option";
+    option.textContent = column.title || "Unnamed Column";
+    console.log({ columnId, column });
+    option.addEventListener("click", () => {
+      addBookmarkToColumn(columnId);
+    });
+    columnOptions.appendChild(option);
   });
+
+  // Show modal
+  columnSelectModal.classList.remove("hidden");
+}
+
+function hideColumnSelectionModal() {
+  columnSelectModal.classList.add("hidden");
 }
 
 // Show Kanban board
@@ -233,6 +307,9 @@ function addEventListeners() {
   notificationClose.addEventListener("click", () => {
     notification.classList.add("hidden");
   });
+
+  // Cancel column selection
+  cancelColumnSelect.addEventListener("click", hideColumnSelectionModal);
 }
 
 // Initialize popup when DOM is loaded

@@ -132,9 +132,6 @@ function setupEventListeners(): void {
   // Add column button
   elements.addColumnBtn.addEventListener("click", modals.openAddColumnModal);
 
-  // Add bookmark button (global)
-  elements.addBookmarkBtn.addEventListener("click", handleAddCurrentPage);
-
   // Settings button
   elements.settingsBtn.addEventListener("click", handleOpenSettings);
 }

@@ -36,27 +36,20 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
 
   if (message.type === "ADD_CURRENT_PAGE") {
-    // Get current page info and add as bookmark
     chrome.tabs.query({ active: true, currentWindow: true }, async (tabs) => {
       try {
         const tab = tabs[0];
-        const workspaceSettings = await storageService.getWorkspaceSettings();
-        const activeWorkspaceId = workspaceSettings.lastVisitedWorkspaceId;
 
-        // Get the first column in the active workspace to add the bookmark to
-        const columns = await storageService.getWorkspaceColumns(
-          activeWorkspaceId
-        );
+        // Get column by ID
+        const column = await storageService.getColumn(message.columnId);
 
-        if (columns.length === 0) {
+        if (!column) {
           sendResponse({
             success: false,
-            error: "No columns found in workspace",
+            error: "Column not found",
           });
           return;
         }
-
-        const firstColumn = columns[0];
 
         // Create new bookmark
         const newBookmark = {
@@ -65,16 +58,16 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           url: tab.url || "",
           favicon: tab.favIconUrl || "",
           createdAt: new Date().toISOString(),
-          columnId: firstColumn.id,
-          workspaceId: activeWorkspaceId,
+          columnId: message.columnId,
+          workspaceId: message.workspaceId,
         };
 
         // Add bookmark to storage
         await storageService.saveBookmark(newBookmark);
 
         // Add bookmark ID to column
-        firstColumn.bookmarkIds = [newBookmark.id, ...firstColumn.bookmarkIds];
-        await storageService.saveColumn(firstColumn);
+        column.bookmarkIds = [newBookmark.id, ...column.bookmarkIds];
+        await storageService.saveColumn(column);
 
         sendResponse({ success: true, bookmark: newBookmark });
       } catch (error) {
