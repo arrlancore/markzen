@@ -3,15 +3,7 @@ import { Bookmark } from "../models/bookmark";
 import storageService from "../utils/storage";
 import analyticsService from "../utils/analytics";
 import { format } from "date-fns";
-
-// Background images (these would normally be stored in the extension)
-const backgroundImages = [
-  "https://images.unsplash.com/photo-1506744038136-46273834b3fb",
-  "https://images.unsplash.com/photo-1511300636408-a63a89df3482",
-  "https://images.unsplash.com/photo-1532274402911-5a369e4c4bb5",
-  "https://images.unsplash.com/photo-1506259091721-347e791bab0f",
-  "https://images.unsplash.com/photo-1451187580459-43490279c0fa",
-];
+import backgroundImages from "./backgroundImages";
 
 // DOM Elements
 const showKanbanBtn = document.getElementById(
@@ -25,9 +17,17 @@ const dateElement = document.getElementById("date") as HTMLDivElement;
 const topBookmarksList = document.getElementById(
   "top-bookmarks-list"
 ) as HTMLDivElement;
+const photoCreditElement = document.getElementById(
+  "photo-credit"
+) as HTMLDivElement;
 
 // State
 let bookmarks: Record<string, Bookmark> = {};
+let currentBackgroundImage: {
+  url: string;
+  photographer: string;
+  profileUrl: string;
+} | null = null;
 
 // Initialize new tab page
 async function initNewTab() {
@@ -55,8 +55,19 @@ async function initNewTab() {
 // Set random background image
 function setRandomBackground() {
   const randomIndex = Math.floor(Math.random() * backgroundImages.length);
-  const imageUrl = backgroundImages[randomIndex];
-  document.body.style.backgroundImage = `url(${imageUrl})`;
+  currentBackgroundImage = backgroundImages[randomIndex];
+
+  if (currentBackgroundImage) {
+    document.body.style.backgroundImage = `url(${currentBackgroundImage.url})`;
+    renderPhotoCredit();
+  }
+}
+
+// Render photo credit
+function renderPhotoCredit() {
+  if (currentBackgroundImage && photoCreditElement) {
+    photoCreditElement.innerHTML = `Photo by <a href="${currentBackgroundImage.profileUrl}?utm_source=markzen&utm_medium=referral" target="_blank" rel="noopener noreferrer">${currentBackgroundImage.photographer}</a> on <a href="https://unsplash.com/?utm_source=markzen&utm_medium=referral" target="_blank" rel="noopener noreferrer">Unsplash</a>`;
+  }
 }
 
 // Update clock and date
