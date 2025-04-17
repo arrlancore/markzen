@@ -5,6 +5,7 @@ import { Bookmark } from "../models/bookmark";
 import storageService from "../utils/storage";
 import analyticsService from "../utils/analytics";
 import themeService from "@/utils/theme-service";
+import { openOrFocusTab } from "../utils/tab-utils";
 
 // DOM Elements
 const showKanbanBtn = document.getElementById(
@@ -316,12 +317,22 @@ function addBookmarkToColumnWithTitle(
 
 // Show Kanban board
 function showKanbanBoard() {
-  chrome.tabs.create({ url: "kanban.html" });
+  openOrFocusTab("kanban.html");
 }
 
 // Show settings page
 function showSettings() {
-  chrome.tabs.create({ url: "settings.html" });
+  chrome.tabs.query({}, (tabs) => {
+    // Check if settings page is already open
+    const existingTab = tabs.find((tab) => tab.url?.includes("settings.html"));
+    if (existingTab && existingTab.id) {
+      // If it exists, switch to that tab
+      chrome.tabs.update(existingTab.id, { active: true });
+    } else {
+      // If not, create new tab
+      chrome.tabs.create({ url: "settings.html" });
+    }
+  });
 }
 
 // Show notification

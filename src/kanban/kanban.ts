@@ -199,7 +199,17 @@ async function handleAddCurrentPage(): Promise<void> {
  * Handle opening settings
  */
 function handleOpenSettings(): void {
-  openUrl("settings.html");
+  chrome.tabs.query({}, (tabs) => {
+    // Check if settings page is already open
+    const existingTab = tabs.find((tab) => tab.url?.includes("settings.html"));
+    if (existingTab && existingTab.id) {
+      // If it exists, switch to that tab
+      chrome.tabs.update(existingTab.id, { active: true });
+    } else {
+      // If not, create new tab
+      chrome.tabs.create({ url: "settings.html" });
+    }
+  });
 }
 
 /**

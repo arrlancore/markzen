@@ -3,6 +3,7 @@ import "./settings.css";
 import { AppSettings } from "../utils/storage";
 import storageService from "../utils/storage";
 import themeService from "@/utils/theme-service";
+import { openOrFocusTab } from "../utils/tab-utils";
 
 // DOM Elements
 const elements = {
@@ -107,12 +108,20 @@ async function initSettings(): Promise<void> {
  * Apply loaded settings to form elements
  */
 function applySettingsToForm(): void {
-  // Theme settings
-  elements.themeSelect.value = currentSettings.theme;
+  console.log("Applying settings to form, theme:", currentSettings.theme);
 
-  // Storage settings
-  console.log("applySettingsToForm", currentSettings);
+  // Storage settings first
   elements.storageTypeToggle.checked = currentSettings.storageType === "sync";
+
+  // Theme settings with a small delay to ensure DOM is ready
+  requestAnimationFrame(() => {
+    if (elements.themeSelect) {
+      elements.themeSelect.value = currentSettings.theme;
+      console.log("Theme select value set to:", elements.themeSelect.value);
+    } else {
+      console.error("Theme select element not found");
+    }
+  });
 
   // Update storage usage stats
   updateStorageStats();
@@ -217,7 +226,7 @@ ${
   backBtn.parentNode?.replaceChild(newBackBtn, backBtn);
   elements.backBtn = newBackBtn;
   elements.backBtn.addEventListener("click", () => {
-    chrome.tabs.create({ url: "kanban.html" });
+    openOrFocusTab("kanban.html");
   });
 
   // Notification
