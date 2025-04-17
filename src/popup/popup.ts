@@ -51,11 +51,11 @@ async function getCurrentPageData(): Promise<NewBookmarkData> {
 // Initialize popup
 async function initPopup() {
   try {
-    await themeService.applyThemeFromSettings();
-    // Load workspaces
-    await loadWorkspaces();
+    // Initialize storage service first
+    await storageService.initialize();
 
-    // Add event listeners
+    await themeService.applyThemeFromSettings();
+    await loadWorkspaces();
     addEventListeners();
   } catch (error) {
     showNotification(

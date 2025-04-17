@@ -8,6 +8,7 @@ import { createColumnElement } from "./component-factory";
 import { setupDragAndDrop, cleanupDragAndDrop } from "./drag-drop";
 import * as modals from "./modals";
 import themeService from "@/utils/theme-service";
+import storageService from "@/utils/storage";
 
 // Current application state
 let state: KanbanState = {
@@ -22,7 +23,10 @@ let state: KanbanState = {
  */
 async function initKanban(): Promise<void> {
   try {
-    // Load data
+    // Initialize storage service first and ensure correct storage type
+    await storageService.initialize();
+
+    // Then load data
     await loadData();
 
     // Render UI

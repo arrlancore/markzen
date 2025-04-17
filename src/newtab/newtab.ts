@@ -33,21 +33,17 @@ let currentBackgroundImage: {
 // Initialize new tab page
 async function initNewTab() {
   try {
+    // Initialize storage service first
+    await storageService.initialize();
+
     await themeService.applyThemeFromSettings();
-    // Set random background
     setRandomBackground();
 
-    // Update clock
     updateClock();
     setInterval(updateClock, 1000);
 
-    // Load data
     await loadData();
-
-    // Render UI
     renderTopBookmarks();
-
-    // Add event listeners
     addEventListeners();
   } catch (error) {
     console.error("Error initializing new tab:", error);

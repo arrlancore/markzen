@@ -9,6 +9,20 @@ const elements = {
   // Theme settings
   themeSelect: document.getElementById("theme-select") as HTMLSelectElement,
 
+  // Storage settings
+  storageTypeToggle: document.getElementById(
+    "storage-type-toggle"
+  ) as HTMLInputElement,
+  storageStatsDescription: document.getElementById(
+    "storage-stats-description"
+  ) as HTMLSpanElement,
+  storageUsageBar: document.getElementById(
+    "storage-usage-bar"
+  ) as HTMLDivElement,
+  storageUsageText: document.getElementById(
+    "storage-usage-text"
+  ) as HTMLSpanElement,
+
   // Data management
   exportDataBtn: document.getElementById(
     "export-data-btn"
@@ -37,13 +51,25 @@ const elements = {
 // Current settings
 let currentSettings: AppSettings;
 
+// Keep track of whether initialization has completed
+let initialized = false;
+
 /**
  * Initialize the settings page
  */
 async function initSettings(): Promise<void> {
+  if (initialized) {
+    console.log("Settings already initialized, skipping");
+    return;
+  }
+
   try {
+    console.log("Initializing settings page");
+    const type = await storageService.getStorageType();
+
     // Load settings
     currentSettings = await storageService.getSettings();
+    console.log("Current settings loaded:", currentSettings);
 
     // Apply settings to form elements
     applySettingsToForm();
@@ -53,7 +79,23 @@ async function initSettings(): Promise<void> {
 
     // Apply current theme
     themeService.applyTheme(currentSettings.theme);
+
+    // Update storage stats initially
+    await updateStorageStats();
+
+    // Set update interval for storage stats
+    const statsInterval = setInterval(updateStorageStats, 60000);
+
+    // Store interval ID so we can clear it if needed
+    window.addEventListener("beforeunload", () => {
+      clearInterval(statsInterval);
+    });
+
+    // Mark as initialized
+    initialized = true;
+    console.log("Settings initialization complete");
   } catch (error) {
+    console.error("Error initializing settings:", error);
     showNotification(
       `Error loading settings: ${(error as Error).message}`,
       "error"
@@ -67,32 +109,133 @@ async function initSettings(): Promise<void> {
 function applySettingsToForm(): void {
   // Theme settings
   elements.themeSelect.value = currentSettings.theme;
+
+  // Storage settings
+  console.log("applySettingsToForm", currentSettings);
+  elements.storageTypeToggle.checked = currentSettings.storageType === "sync";
+
+  // Update storage usage stats
+  updateStorageStats();
 }
 
 /**
  * Set up event listeners
+ * Ensures that listeners are only added once
  */
 function setupEventListeners(): void {
+  // First, remove any existing event listeners by cloning and replacing elements
+  // This is a simple way to ensure we don't have duplicate listeners
+
   // Theme settings
+  const themeSelect = elements.themeSelect;
+  const newThemeSelect = themeSelect.cloneNode(true) as HTMLSelectElement;
+  themeSelect.parentNode?.replaceChild(newThemeSelect, themeSelect);
+  elements.themeSelect = newThemeSelect;
   elements.themeSelect.addEventListener("change", saveSettings);
 
+  // Storage settings
+  const storageTypeToggle = elements.storageTypeToggle;
+  const newStorageTypeToggle = storageTypeToggle.cloneNode(
+    true
+  ) as HTMLInputElement;
+  storageTypeToggle.parentNode?.replaceChild(
+    newStorageTypeToggle,
+    storageTypeToggle
+  );
+  elements.storageTypeToggle = newStorageTypeToggle;
+
+  // Add event listener with a named function so we can log when it's called
+  elements.storageTypeToggle.addEventListener("change", async () => {
+    console.log("Storage type change event triggered");
+    const newStorageType = elements.storageTypeToggle.checked
+      ? "sync"
+      : "local";
+
+    // Show confirmation dialog
+    const confirmed = await showConfirmationDialog(
+      "Change Storage Type",
+      `Are you sure you want to change to ${
+        newStorageType === "local" ? "local" : "sync"
+      } storage? 
+      
+This will migrate all your data to ${
+        newStorageType === "local"
+          ? "this device only"
+          : "Chrome sync storage across all your devices"
+      }.
+
+${
+  newStorageType === "sync"
+    ? "Note: Sync storage has a limit of 100KB. If your data exceeds this limit, the migration will fail."
+    : ""
+}`
+    );
+
+    console.log("Confirmation result:", confirmed);
+
+    if (confirmed) {
+      await handleStorageTypeChange(newStorageType);
+    } else {
+      // Reset the toggle to current value
+      elements.storageTypeToggle.checked =
+        currentSettings.storageType === "sync";
+    }
+  });
+
   // Data management
+  const exportDataBtn = elements.exportDataBtn;
+  const newExportDataBtn = exportDataBtn.cloneNode(true) as HTMLButtonElement;
+  exportDataBtn.parentNode?.replaceChild(newExportDataBtn, exportDataBtn);
+  elements.exportDataBtn = newExportDataBtn;
   elements.exportDataBtn.addEventListener("click", exportData);
+
+  const importDataBtn = elements.importDataBtn;
+  const newImportDataBtn = importDataBtn.cloneNode(true) as HTMLButtonElement;
+  importDataBtn.parentNode?.replaceChild(newImportDataBtn, importDataBtn);
+  elements.importDataBtn = newImportDataBtn;
   elements.importDataBtn.addEventListener("click", () =>
     elements.importFileInput.click()
   );
+
+  const importFileInput = elements.importFileInput;
+  const newImportFileInput = importFileInput.cloneNode(
+    true
+  ) as HTMLInputElement;
+  importFileInput.parentNode?.replaceChild(newImportFileInput, importFileInput);
+  elements.importFileInput = newImportFileInput;
   elements.importFileInput.addEventListener("change", importData);
+
+  const resetDataBtn = elements.resetDataBtn;
+  const newResetDataBtn = resetDataBtn.cloneNode(true) as HTMLButtonElement;
+  resetDataBtn.parentNode?.replaceChild(newResetDataBtn, resetDataBtn);
+  elements.resetDataBtn = newResetDataBtn;
   elements.resetDataBtn.addEventListener("click", resetData);
 
   // Navigation
+  const backBtn = elements.backBtn;
+  const newBackBtn = backBtn.cloneNode(true) as HTMLButtonElement;
+  backBtn.parentNode?.replaceChild(newBackBtn, backBtn);
+  elements.backBtn = newBackBtn;
   elements.backBtn.addEventListener("click", () => {
     chrome.tabs.create({ url: "kanban.html" });
   });
 
   // Notification
+  const notificationClose = elements.notificationClose;
+  const newNotificationClose = notificationClose.cloneNode(
+    true
+  ) as HTMLButtonElement;
+  notificationClose.parentNode?.replaceChild(
+    newNotificationClose,
+    notificationClose
+  );
+  elements.notificationClose = newNotificationClose;
   elements.notificationClose.addEventListener("click", () => {
     elements.notification.classList.add("hidden");
   });
+
+  // Log for debugging
+  console.log("Event listeners have been set up");
 }
 
 /**
@@ -223,6 +366,10 @@ async function importData(): Promise<void> {
           workspaceSettings: jsonData.workspaceSettings,
         });
 
+        chrome.storage.local.set({
+          bookmarkStats: jsonData.bookmarkStats,
+        });
+
         showNotification("Data imported successfully", "success");
 
         // Reload form with new settings
@@ -301,5 +448,249 @@ function showNotification(
   }, 3000);
 }
 
-// Initialize when DOM is loaded
-document.addEventListener("DOMContentLoaded", initSettings);
+/**
+ * Handle storage type change
+ * This function manages the UI during storage migration
+ */
+async function handleStorageTypeChange(
+  newStorageType: "local" | "sync"
+): Promise<void> {
+  try {
+    // Show migration indicator
+    const migrationIndicator = document.createElement("div");
+    migrationIndicator.className = "migration-indicator";
+    migrationIndicator.innerHTML = `
+      <div class="migration-indicator-spinner"></div>
+      <span>Migrating data to ${newStorageType} storage...</span>
+    `;
+
+    // Append it to container
+    const container = elements.storageTypeToggle.closest(".setting-item");
+    container?.appendChild(migrationIndicator);
+
+    // Disable the toggle during migration
+    elements.storageTypeToggle.disabled = true;
+
+    // Update settings with new storage type
+    await storageService.updateSettings({ storageType: newStorageType });
+
+    // Update current settings
+    currentSettings = await storageService.getSettings();
+
+    // Remove migration indicator
+    migrationIndicator.remove();
+    elements.storageTypeToggle.disabled = false;
+
+    // Update storage stats
+    await updateStorageStats();
+
+    showNotification(
+      `Data successfully migrated to ${newStorageType} storage`,
+      "success"
+    );
+  } catch (error) {
+    // Reset the toggle to current value
+    elements.storageTypeToggle.checked = currentSettings.storageType === "sync";
+
+    // Remove migration indicator if it exists
+    const migrationIndicator = document.querySelector(".migration-indicator");
+    if (migrationIndicator) {
+      migrationIndicator.remove();
+    }
+
+    elements.storageTypeToggle.disabled = false;
+
+    showNotification(
+      `Error changing storage type: ${(error as Error).message}`,
+      "error"
+    );
+  }
+}
+
+/**
+ * Show a confirmation dialog
+ * Ensures only one dialog is shown at a time
+ */
+function showConfirmationDialog(
+  title: string,
+  message: string
+): Promise<boolean> {
+  // First, remove any existing dialogs to prevent duplicates
+  const existingOverlays = document.querySelectorAll(
+    ".confirmation-dialog-overlay"
+  );
+  existingOverlays.forEach((overlay) => {
+    document.body.removeChild(overlay);
+  });
+
+  return new Promise((resolve) => {
+    // Create modal overlay with a specific class for easier cleanup
+    const overlay = document.createElement("div");
+    overlay.className = "confirmation-dialog-overlay";
+    overlay.style.position = "fixed";
+    overlay.style.top = "0";
+    overlay.style.left = "0";
+    overlay.style.right = "0";
+    overlay.style.bottom = "0";
+    overlay.style.backgroundColor = "rgba(0, 0, 0, 0.5)";
+    overlay.style.display = "flex";
+    overlay.style.justifyContent = "center";
+    overlay.style.alignItems = "center";
+    overlay.style.zIndex = "1000";
+
+    // Create modal
+    const modal = document.createElement("div");
+    modal.className = "confirmation-dialog-modal";
+    modal.style.backgroundColor = "var(--color-background)";
+    modal.style.borderRadius = "var(--border-radius)";
+    modal.style.boxShadow = "var(--shadow)";
+    modal.style.padding = "24px";
+    modal.style.maxWidth = "400px";
+    modal.style.width = "100%";
+
+    // Create modal title
+    const modalTitle = document.createElement("h2");
+    modalTitle.textContent = title;
+    modalTitle.style.marginBottom = "16px";
+    modalTitle.style.fontSize = "18px";
+    modalTitle.style.fontWeight = "600";
+
+    // Create modal message
+    const modalMessage = document.createElement("p");
+    modalMessage.textContent = message;
+    modalMessage.style.marginBottom = "24px";
+    modalMessage.style.fontSize = "14px";
+    modalMessage.style.lineHeight = "1.5";
+    modalMessage.style.whiteSpace = "pre-line";
+
+    // Create modal actions
+    const modalActions = document.createElement("div");
+    modalActions.style.display = "flex";
+    modalActions.style.justifyContent = "flex-end";
+    modalActions.style.gap = "12px";
+
+    // Create cancel button
+    const cancelButton = document.createElement("button");
+    cancelButton.textContent = "Cancel";
+    cancelButton.className = "setting-button cancel-button";
+    cancelButton.addEventListener(
+      "click",
+      () => {
+        document.body.removeChild(overlay);
+        resolve(false);
+      },
+      { once: true }
+    ); // Use once to ensure event only triggers once
+
+    // Create confirm button
+    const confirmButton = document.createElement("button");
+    confirmButton.textContent = "Confirm";
+    confirmButton.className = "setting-button confirm-button";
+    confirmButton.style.backgroundColor = "var(--color-primary)";
+    confirmButton.style.color = "white";
+    confirmButton.addEventListener(
+      "click",
+      () => {
+        document.body.removeChild(overlay);
+        resolve(true);
+      },
+      { once: true }
+    ); // Use once to ensure event only triggers once
+
+    // Append elements
+    modalActions.appendChild(cancelButton);
+    modalActions.appendChild(confirmButton);
+
+    modal.appendChild(modalTitle);
+    modal.appendChild(modalMessage);
+    modal.appendChild(modalActions);
+
+    overlay.appendChild(modal);
+    document.body.appendChild(overlay);
+  });
+}
+
+/**
+ * Update storage usage statistics
+ * This function calculates and displays current storage usage
+ */
+async function updateStorageStats(): Promise<void> {
+  try {
+    const storageType = currentSettings.storageType || "local";
+    const storage =
+      storageType === "local" ? chrome.storage.local : chrome.storage.sync;
+
+    // Get current usage
+    const data = await new Promise<Record<string, any>>((resolve) => {
+      storage.get(null, (items) => {
+        resolve(items || {});
+      });
+    });
+
+    // Calculate data size
+    const jsonData = JSON.stringify(data);
+    const dataSize = new Blob([jsonData]).size;
+
+    // Calculate percentage - use appropriate storage limits
+    const maxSize = storageType === "local" ? 5 * 1024 * 1024 : 100 * 1024; // 5MB for local, 100KB for sync
+    const usagePercentage = Math.min(
+      100,
+      Math.round((dataSize / maxSize) * 100)
+    );
+
+    // Format sizes for display
+    const dataSizeFormatted = formatBytes(dataSize);
+    const maxSizeFormatted = formatBytes(maxSize);
+
+    // Update UI elements
+    elements.storageStatsDescription.textContent = `Using ${dataSizeFormatted} of ${maxSizeFormatted} (${storageType} storage)`;
+
+    elements.storageUsageBar.style.width = `${usagePercentage}%`;
+    elements.storageUsageText.textContent = `${usagePercentage}%`;
+
+    // Add warning classes for high usage
+    elements.storageUsageBar.classList.remove("warning", "danger");
+    if (usagePercentage >= 90) {
+      elements.storageUsageBar.classList.add("danger");
+    } else if (usagePercentage >= 75) {
+      elements.storageUsageBar.classList.add("warning");
+    }
+
+    // Log storage info for debugging
+    console.log(
+      `Storage usage: ${dataSizeFormatted} of ${maxSizeFormatted} (${usagePercentage}%)`
+    );
+  } catch (error) {
+    console.error("Error calculating storage usage:", error);
+    elements.storageStatsDescription.textContent = `Error calculating storage usage: ${
+      (error as Error).message
+    }`;
+  }
+}
+
+/**
+ * Format bytes to human-readable string
+ */
+function formatBytes(bytes: number): string {
+  if (bytes === 0) return "0 Bytes";
+
+  const k = 1024;
+  const sizes = ["Bytes", "KB", "MB"];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
+}
+
+document.addEventListener(
+  "DOMContentLoaded",
+  async () => {
+    console.log("DOM loaded, initializing storage service");
+
+    // Initialize storage service first
+    await storageService.initialize();
+
+    // Then initialize settings once
+    await initSettings();
+  },
+  { once: true }
+); // Use once to ensure it only runs once
