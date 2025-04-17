@@ -2,6 +2,7 @@ const path = require('path');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
 const CopyWebpackPlugin = require('copy-webpack-plugin');
 const MiniCssExtractPlugin = require('mini-css-extract-plugin');
+const TerserPlugin = require('terser-webpack-plugin');
 
 module.exports = {
   entry: {
@@ -107,6 +108,16 @@ module.exports = {
     splitChunks: {
       chunks: 'all',
       name: 'vendor'
-    }
+    },
+    minimize: true,
+    minimizer: [
+      new TerserPlugin({
+        terserOptions: {
+          compress: {
+            // drop_console: true,
+          },
+        },
+      }),
+    ],
   }
 };
