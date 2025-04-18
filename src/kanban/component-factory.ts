@@ -3,6 +3,14 @@ import { Bookmark, Column } from "../models/bookmark";
 import { openBookmark } from "./data";
 import { KanbanState } from "./types";
 import * as modals from "./modals"; // Import modals directly to avoid circular dependency issues
+import storageService from "@/utils/storage";
+import {
+  checkBookmarkExpiration,
+  formatTimeSinceLastVisit,
+} from "@/utils/expiration-utils";
+
+// Import or declare settings at the top of the file
+let appSettings: any = null;
 
 /**
  * Create a column element
@@ -16,6 +24,7 @@ export function createColumnElement(
   callbacks: {
     editColumn: (id: string) => void;
     addBookmark: (columnId: string) => void;
+    archiveBookmark: (id: string, columnId: string) => void;
   }
 ): HTMLElement {
   // Create column container
@@ -90,8 +99,20 @@ export function createColumnElement(
             state.bookmarks
           );
         },
+        archiveBookmark: (id, columnId) => {
+          // Call the archive function
+          callbacks.archiveBookmark(id, columnId);
+        },
       });
-      body.appendChild(bookmarkElement);
+
+      bookmarkElement
+        .then((bookmarkElementResolved) => {
+          // Append the bookmark element to the column body
+          body.appendChild(bookmarkElementResolved);
+        })
+        .catch((error) => {
+          console.error("Error creating bookmark element:", error);
+        });
     });
   }
 
@@ -125,15 +146,30 @@ export function createColumnElement(
  * @param bookmark The bookmark data
  * @param callbacks Object containing event callbacks
  */
-export function createBookmarkElement(
+export async function createBookmarkElement(
   bookmark: Bookmark,
   callbacks: {
     editBookmark: (id: string) => void;
     deleteBookmark: (id: string) => void;
+    archiveBookmark?: (id: string, columnId: string) => void;
   }
-): HTMLElement {
+): Promise<HTMLElement> {
+  // Ensure settings are loaded
+  if (!appSettings) {
+    appSettings = await storageService.getSettings();
+  }
+
+  // Check if bookmark is expired
+  const { isExpired, daysSinceLastVisit } = checkBookmarkExpiration(
+    bookmark,
+    appSettings
+  );
+
   const bookmarkElement = document.createElement("div");
   bookmarkElement.className = "bookmark-card";
+  if (isExpired) {
+    bookmarkElement.classList.add("expired-bookmark");
+  }
   bookmarkElement.dataset.id = bookmark.id;
   bookmarkElement.draggable = true;
 
@@ -162,6 +198,29 @@ export function createBookmarkElement(
       <circle cx="12" cy="19" r="1"></circle>
     </svg>
   `;
+
+  const menuBtnContainer = document.createElement("div");
+  menuBtnContainer.className = "menu-btn-container";
+
+  // Add expiration warning icon if bookmark is expired
+  if (isExpired && daysSinceLastVisit !== null) {
+    const warningBtn = document.createElement("button");
+    warningBtn.className = "bookmark-warning-btn";
+    warningBtn.title = `Last visited: ${formatTimeSinceLastVisit(
+      daysSinceLastVisit
+    )}`;
+    warningBtn.innerHTML = `
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="10"></circle>
+        <line x1="12" y1="6" x2="12" y2="12"></line>
+        <line x1="12" y1="16" x2="12.01" y2="16"></line>
+      </svg>
+    `;
+    menuBtnContainer.appendChild(warningBtn);
+  }
+
+  menuBtnContainer.appendChild(menuBtn);
+  menu.appendChild(menuBtnContainer);
 
   const menuDropdown = document.createElement("div");
   menuDropdown.className = "bookmark-menu-dropdown";
@@ -197,12 +256,39 @@ export function createBookmarkElement(
     openBookmark(bookmark.id, bookmark.url);
   });
 
+  // Add Archive option for expired bookmarks
+  if (isExpired && appSettings.bookmarkExpirationDays !== "never") {
+    const archiveMenuItem = document.createElement("div");
+    archiveMenuItem.className = "bookmark-menu-item";
+    archiveMenuItem.innerHTML = `
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="21 8 21 21 3 21 3 8"></polyline>
+        <rect x="1" y="3" width="22" height="5"></rect>
+        <line x1="10" y1="12" x2="14" y2="12"></line>
+      </svg>
+      <span>Archive</span>
+    `;
+    archiveMenuItem.addEventListener("click", (e) => {
+      e.stopPropagation();
+      menuDropdown.classList.remove("active");
+
+      // Call archive function if available, otherwise show alert
+      if (callbacks.archiveBookmark) {
+        callbacks.archiveBookmark(bookmark.id, bookmark.columnId);
+      } else {
+        alert("Archive functionality not available");
+      }
+    });
+
+    menuDropdown.appendChild(archiveMenuItem);
+  }
+
   const deleteMenuItem = document.createElement("div");
   deleteMenuItem.className = "bookmark-menu-item danger";
   deleteMenuItem.innerHTML = `
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
       <polyline points="3 6 5 6 21 6"></polyline>
-      <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+      <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1-2-2h4a2 2 0 0 1-2 2v2"></path>
       <line x1="10" y1="11" x2="10" y2="17"></line>
       <line x1="14" y1="11" x2="14" y2="17"></line>
     </svg>
@@ -218,7 +304,6 @@ export function createBookmarkElement(
   menuDropdown.appendChild(openMenuItem);
   menuDropdown.appendChild(deleteMenuItem);
 
-  menu.appendChild(menuBtn);
   menu.appendChild(menuDropdown);
 
   menuBtn.addEventListener("click", (e) => {

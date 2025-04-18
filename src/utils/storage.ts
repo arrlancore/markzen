@@ -20,9 +20,8 @@ export interface StorageData {
 }
 export interface AppSettings {
   theme: "light" | "dark" | "system";
-  storageType: "local" | "sync"; // New setting for storage type
-  // Keep these properties for backward compatibility
-  // but we won't expose them in the UI anymore
+  storageType: "local" | "sync";
+  // Keep existing settings
   newtabBackground: "color" | "image" | "unsplash";
   unsplashCategory?: string;
   backgroundColor?: string;
@@ -32,17 +31,20 @@ export interface AppSettings {
   showTopBookmarks: boolean;
   topBookmarksCount: number;
   showFavicons: boolean;
+  bookmarkExpirationDays: number | "never";
 }
 
+// Update the defaultSettings object
 const defaultSettings: AppSettings = {
   theme: "system",
-  storageType: "local", // Default to local storage
+  storageType: "local",
   newtabBackground: "image",
   showClock: true,
   showDate: true,
   showTopBookmarks: true,
   topBookmarksCount: 3,
   showFavicons: true,
+  bookmarkExpirationDays: 90,
 };
 
 const defaultWorkspaceSettings: WorkspaceSettings = {

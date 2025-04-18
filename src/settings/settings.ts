@@ -47,6 +47,11 @@ const elements = {
   notificationClose: document.getElementById(
     "notification-close"
   ) as HTMLButtonElement,
+
+  // Bookmark expiration
+  expirationDaysSelect: document.getElementById(
+    "expiration-days-select"
+  ) as HTMLSelectElement,
 };
 
 // Current settings
@@ -108,10 +113,24 @@ async function initSettings(): Promise<void> {
  * Apply loaded settings to form elements
  */
 function applySettingsToForm(): void {
-  console.log("Applying settings to form, theme:", currentSettings.theme);
+  console.log("Applying settings to form:", currentSettings);
 
   // Storage settings first
   elements.storageTypeToggle.checked = currentSettings.storageType === "sync";
+
+  // Set expiration days value with better validation and logging
+  requestAnimationFrame(() => {
+    console.log("About to set expiration days value");
+    if (elements.expirationDaysSelect) {
+      const expirationValue = currentSettings.bookmarkExpirationDays;
+
+      if (expirationValue === undefined || expirationValue === null) {
+        elements.expirationDaysSelect.value = "never";
+      } else {
+        elements.expirationDaysSelect.value = expirationValue.toString();
+      }
+    }
+  });
 
   // Theme settings with a small delay to ensure DOM is ready
   requestAnimationFrame(() => {
@@ -243,6 +262,18 @@ ${
     elements.notification.classList.add("hidden");
   });
 
+  // Bookmark expiration settings
+  const expirationDaysSelect = elements.expirationDaysSelect;
+  const newExpirationDaysSelect = expirationDaysSelect.cloneNode(
+    true
+  ) as HTMLSelectElement;
+  expirationDaysSelect.parentNode?.replaceChild(
+    newExpirationDaysSelect,
+    expirationDaysSelect
+  );
+  elements.expirationDaysSelect = newExpirationDaysSelect;
+  elements.expirationDaysSelect.addEventListener("change", saveSettings);
+
   // Log for debugging
   console.log("Event listeners have been set up");
 }
@@ -257,6 +288,11 @@ async function saveSettings(): Promise<void> {
       ...currentSettings,
       // Theme settings
       theme: elements.themeSelect.value as "light" | "dark" | "system",
+      // Add expiration days setting
+      bookmarkExpirationDays:
+        elements.expirationDaysSelect.value === "never"
+          ? "never"
+          : parseInt(elements.expirationDaysSelect.value, 10),
     };
 
     // Save to storage

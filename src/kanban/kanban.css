@@ -851,3 +851,77 @@ body {
   background-color: #454560;
   color: var(--color-text);
 }
+
+/* Add to src/kanban/kanban.css */
+
+/* Expired bookmark styles */
+.expired-bookmark {
+  border-left: 3px solid #ef4444; /* Red left border */
+  opacity: 0.85; /* Slightly faded */
+}
+
+.expired-bookmark:hover {
+  opacity: 1;
+}
+
+.bookmark-expiration {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  color: #ef4444;
+  margin-top: 4px;
+  margin-bottom: 6px;
+  padding-left: 2px;
+}
+
+.expiration-icon {
+  display: flex;
+  align-items: center;
+}
+
+.expiration-icon svg {
+  stroke: #ef4444;
+}
+
+/* Add pulsing animation for expired bookmarks */
+@keyframes pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4);
+  }
+  70% {
+    box-shadow: 0 0 0 6px rgba(239, 68, 68, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0);
+  }
+}
+
+.expired-bookmark {
+  animation: pulse 2s infinite;
+}
+
+.expired-bookmark:hover {
+  animation: none;
+}
+
+.menu-btn-container {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.bookmark-warning-btn {
+  padding: 4px;
+  color: #e67e22;
+  background: none;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.bookmark-warning-btn:hover {
+  color: #d35400;
+}

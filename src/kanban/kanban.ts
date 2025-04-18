@@ -8,7 +8,8 @@ import { createColumnElement } from "./component-factory";
 import { setupDragAndDrop, cleanupDragAndDrop } from "./drag-drop";
 import * as modals from "./modals";
 import themeService from "@/utils/theme-service";
-import storageService from "@/utils/storage";
+import storageService, { AppSettings } from "@/utils/storage";
+import { Column } from "@/models/bookmark";
 
 // Current application state
 let state: KanbanState = {
@@ -18,6 +19,9 @@ let state: KanbanState = {
   bookmarks: {},
 };
 
+// Add a variable to store settings
+let appSettings: AppSettings;
+
 /**
  * Initialize the Kanban board
  */
@@ -26,11 +30,14 @@ async function initKanban(): Promise<void> {
     // Initialize storage service first and ensure correct storage type
     await storageService.initialize();
 
+    // Load app settings
+    appSettings = await storageService.getSettings();
+
     // Then load data
     await loadData();
 
     // Render UI
-    await themeService.applyThemeFromSettings();
+    await themeService.applyTheme(appSettings.theme);
     renderWorkspaceSelector();
     renderKanbanBoard();
 
@@ -112,6 +119,9 @@ function renderKanbanBoard(): void {
     const columnElement = createColumnElement(column, state, {
       editColumn: (id) => modals.openEditColumnModal(id, state.columns),
       addBookmark: (columnId) => modals.openAddBookmarkModal(columnId),
+      // Add archive functionality callback
+      archiveBookmark: (bookmarkId, sourceColumnId) =>
+        archiveBookmark(bookmarkId, sourceColumnId),
     });
     elements.kanbanBoard.appendChild(columnElement);
   });
@@ -210,6 +220,83 @@ function handleOpenSettings(): void {
       chrome.tabs.create({ url: "settings.html" });
     }
   });
+}
+
+/**
+ * Archive a bookmark by moving it to the Archive column
+ * @param bookmarkId The ID of the bookmark to archive
+ * @param sourceColumnId The ID of the column containing the bookmark
+ */
+async function archiveBookmark(
+  bookmarkId: string,
+  sourceColumnId: string
+): Promise<void> {
+  try {
+    // Get current state
+    const data = await dataService.loadData();
+    const bookmark = data.bookmarks[bookmarkId];
+
+    if (!bookmark) {
+      showNotification("Bookmark not found", "error");
+      return;
+    }
+
+    // Find archive column or create it
+    let archiveColumn = Object.values(data.columns).find(
+      (col) =>
+        col.workspaceId === data.activeWorkspaceId &&
+        col.title.toLowerCase() === "archive"
+    );
+
+    // If no archive column exists, create one
+    if (!archiveColumn) {
+      // Create a new archive column
+      const newArchiveColumn: Column = {
+        id: `archive-${Date.now()}`,
+        title: "Archive",
+        bookmarkIds: [],
+        workspaceId: data.activeWorkspaceId,
+        createdAt: new Date().toISOString(),
+        order: Object.values(data.columns).filter(
+          (col) => col.workspaceId === data.activeWorkspaceId
+        ).length, // Put at the end
+      };
+
+      // Save the new archive column
+      await dataService.saveColumn(newArchiveColumn);
+
+      // Update workspace columnIds
+      const workspace = data.workspaces[data.activeWorkspaceId];
+      if (workspace) {
+        workspace.columnIds.push(newArchiveColumn.id);
+        await dataService.saveWorkspace(workspace);
+      }
+
+      archiveColumn = newArchiveColumn;
+
+      showNotification("Archive column created", "success");
+    }
+
+    // Move the bookmark to the archive column
+    const targetIndex = 0; // Add to the top of the archive column
+    await dataService.moveBookmark(
+      bookmarkId,
+      sourceColumnId,
+      archiveColumn.id,
+      targetIndex
+    );
+
+    showNotification(`"${bookmark.title}" moved to Archive`, "success");
+
+    // Refresh the UI
+    await loadData();
+    renderKanbanBoard();
+  } catch (error) {
+    showNotification(
+      `Error archiving bookmark: ${(error as Error).message}`,
+      "error"
+    );
+  }
 }
 
 /**
