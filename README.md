@@ -1,6 +1,6 @@
 # MarkZen - Kanban-style Bookmark Manager
 
-MarkZen is a Chrome extension that transforms browser bookmarks from a cluttered list into a visually organized workspace, bringing clarity and calm to your digital life while respecting your privacy.
+MarkZen is a Chrome extension that transforms browser bookmarks from a cluttered list into a visually organized workspace, bringing clarity and calm to your digital life while respecting your privacy. You have the flexibility to choose between local storage or Chrome sync to store your bookmarks and settings.
 
 ## Features
 

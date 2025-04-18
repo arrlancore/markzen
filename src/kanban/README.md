@@ -13,5 +13,6 @@ MarkZen's Kanban-style bookmark management transforms how you organize your web 
 - **Quick Access**: Add the current page to your bookmarks with one click via the extension's popup
 - **Fast Search & Filtering**: Quickly find bookmarks across all workspaces with powerful search and filtering options [TODO]
 - **Usage Analytics**: Automatically track which bookmarks you use most frequently to surface your most valuable resources
+- **Bookmark Expiration**: Automatically flags bookmarks after 90 days (configurable in settings) with an option to archive expired items, helping maintain a clutter-free workspace
 
 The Kanban approach is particularly effective for knowledge workers, researchers, and anyone who needs to manage large collections of web resources in a visual, intuitive way. By organizing bookmarks spatially rather than hierarchically, MarkZen helps you maintain context and priority while reducing the cognitive load of finding the resources you need.
