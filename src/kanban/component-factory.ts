@@ -242,6 +242,7 @@ export async function createBookmarkElement(
 
   const menuDropdown = document.createElement("div");
   menuDropdown.className = "bookmark-menu-dropdown";
+  menuDropdown.dataset.bookmarkId = bookmark.id;
 
   const editMenuItem = document.createElement("div");
   editMenuItem.className = "bookmark-menu-item";
@@ -326,12 +327,158 @@ export async function createBookmarkElement(
 
   menuBtn.addEventListener("click", (e) => {
     e.stopPropagation();
-    menuDropdown.classList.toggle("active");
+
+    // Close any other open dropdowns first
+    document
+      .querySelectorAll(".bookmark-menu-dropdown.active")
+      .forEach((dropdown) => {
+        if (dropdown !== menuDropdown) {
+          dropdown.classList.remove("active");
+          if (document.body.contains(dropdown)) {
+            document.body.removeChild(dropdown);
+          }
+        }
+      });
+
+    if (menuDropdown.classList.contains("active")) {
+      // If it's already active, deactivate it
+      menuDropdown.classList.remove("active");
+      if (document.body.contains(menuDropdown)) {
+        document.body.removeChild(menuDropdown);
+      }
+    } else {
+      // Position the dropdown relative to the button
+      const rect = menuBtn.getBoundingClientRect();
+
+      // Append all menu items to the dropdown
+      menuDropdown.innerHTML = ""; // Clear any existing content
+
+      // Recreate the menu items
+      const editMenuItem = document.createElement("div");
+      editMenuItem.className = "bookmark-menu-item";
+      editMenuItem.innerHTML = `
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+          <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+        </svg>
+        <span>Edit</span>
+      `;
+      editMenuItem.addEventListener("click", (e) => {
+        e.stopPropagation();
+        menuDropdown.classList.remove("active");
+        if (document.body.contains(menuDropdown)) {
+          document.body.removeChild(menuDropdown);
+        }
+        callbacks.editBookmark(bookmark.id);
+      });
+      menuDropdown.appendChild(editMenuItem);
+
+      const openMenuItem = document.createElement("div");
+      openMenuItem.className = "bookmark-menu-item";
+      openMenuItem.innerHTML = `
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+          <polyline points="15 3 21 3 21 9"></polyline>
+          <line x1="10" y1="14" x2="21" y2="3"></line>
+        </svg>
+        <span>Open</span>
+      `;
+      openMenuItem.addEventListener("click", (e) => {
+        e.stopPropagation();
+        menuDropdown.classList.remove("active");
+        if (document.body.contains(menuDropdown)) {
+          document.body.removeChild(menuDropdown);
+        }
+        openBookmark(bookmark.id, bookmark.url);
+      });
+      menuDropdown.appendChild(openMenuItem);
+
+      // Add Archive option for expired bookmarks
+      if (isExpired && appSettings.bookmarkExpirationDays !== "never") {
+        const archiveMenuItem = document.createElement("div");
+        archiveMenuItem.className = "bookmark-menu-item";
+        archiveMenuItem.innerHTML = `
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="21 8 21 21 3 21 3 8"></polyline>
+            <rect x="1" y="3" width="22" height="5"></rect>
+            <line x1="10" y1="12" x2="14" y2="12"></line>
+          </svg>
+          <span>Archive</span>
+        `;
+        archiveMenuItem.addEventListener("click", (e) => {
+          e.stopPropagation();
+          menuDropdown.classList.remove("active");
+          if (document.body.contains(menuDropdown)) {
+            document.body.removeChild(menuDropdown);
+          }
+
+          // Call archive function if available, otherwise show alert
+          if (callbacks.archiveBookmark) {
+            callbacks.archiveBookmark(bookmark.id, bookmark.columnId);
+          } else {
+            alert("Archive functionality not available");
+          }
+        });
+        menuDropdown.appendChild(archiveMenuItem);
+      }
+
+      const deleteMenuItem = document.createElement("div");
+      deleteMenuItem.className = "bookmark-menu-item danger";
+      deleteMenuItem.innerHTML = `
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="3 6 5 6 21 6"></polyline>
+          <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1-2-2h4a2 2 0 0 1-2 2v2"></path>
+          <line x1="10" y1="11" x2="10" y2="17"></line>
+          <line x1="14" y1="11" x2="14" y2="17"></line>
+        </svg>
+        <span>Delete</span>
+      `;
+      deleteMenuItem.addEventListener("click", (e) => {
+        e.stopPropagation();
+        menuDropdown.classList.remove("active");
+        if (document.body.contains(menuDropdown)) {
+          document.body.removeChild(menuDropdown);
+        }
+        callbacks.deleteBookmark(bookmark.id);
+      });
+      menuDropdown.appendChild(deleteMenuItem);
+
+      // Position and show the dropdown
+      menuDropdown.style.position = "fixed";
+      menuDropdown.style.top = `${rect.bottom + 5}px`;
+      menuDropdown.style.left = `${rect.left - 120 + rect.width}px`; // Adjust 120 for dropdown width
+
+      // Make it active and add to body
+      menuDropdown.classList.add("active");
+      document.body.appendChild(menuDropdown);
+
+      // Adjust position if off-screen
+      setTimeout(() => {
+        const dropdownRect = menuDropdown.getBoundingClientRect();
+
+        // Ensure it doesn't go off the right edge
+        if (dropdownRect.right > window.innerWidth) {
+          menuDropdown.style.left = `${
+            window.innerWidth - dropdownRect.width - 10
+          }px`;
+        }
+
+        // Ensure it doesn't go off the bottom edge
+        if (dropdownRect.bottom > window.innerHeight) {
+          menuDropdown.style.top = `${rect.top - dropdownRect.height - 5}px`;
+        }
+      }, 0);
+    }
   });
 
   // Close dropdown when clicking outside
   document.addEventListener("click", () => {
-    menuDropdown.classList.remove("active");
+    if (menuDropdown.classList.contains("active")) {
+      menuDropdown.classList.remove("active");
+      if (document.body.contains(menuDropdown)) {
+        document.body.removeChild(menuDropdown);
+      }
+    }
   });
 
   header.appendChild(favicon);

@@ -330,6 +330,7 @@ body {
   backdrop-filter: blur(6px);
   /* Subtle highlight on top */
   border-top: 1px solid rgba(255, 255, 255, 0.5);
+  overflow: visible;;
 }
 
 .bookmark-card:hover {
@@ -392,6 +393,7 @@ body {
 
 .bookmark-menu {
   position: relative;
+  z-index: 10;
 }
 
 .bookmark-menu-btn {
@@ -422,14 +424,14 @@ body {
   border-radius: var(--border-radius);
   padding: 8px 0;
   box-shadow: var(--shadow);
-  z-index: 10;
+  z-index: 1000;
   min-width: 150px;
   display: none;
+  width: fit-content;
 }
 
 .bookmark-menu-dropdown.active {
   display: block;
-  z-index: 9;
 }
 
 .bookmark-menu-item {
