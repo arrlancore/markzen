@@ -257,9 +257,6 @@ export async function addCurrentPage(columnId?: string): Promise<void> {
   });
 }
 
-// In src/kanban/data.ts
-// Replace the reorderBookmark function
-
 export async function reorderBookmark(
   bookmarkId: string,
   columnId: string,

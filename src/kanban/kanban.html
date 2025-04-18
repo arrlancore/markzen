@@ -114,6 +114,105 @@
         </div>
       </header>
 
+      <!-- Add this section right after the header and before the main kanban-container in src/kanban/kanban.html -->
+      <!-- Default opens section -->
+      <div id="default-opens-container" class="default-opens-container hidden">
+        <div class="default-opens-header">
+          <div class="default-opens-title">
+            <span>Default Opens</span>
+            <span id="default-opens-count" class="default-opens-count">0</span>
+          </div>
+          <div class="default-opens-actions">
+            <button
+              id="open-all-defaults-btn"
+              class="default-opens-button"
+              title="Open All Default Bookmarks"
+            >
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <line x1="3" y1="12" x2="21" y2="12"></line>
+                <polyline points="15 6 21 12 15 18"></polyline>
+              </svg>
+              <span>Open All</span>
+            </button>
+          </div>
+        </div>
+        <div id="default-opens-body" class="default-opens-body">
+          <div id="default-opens-empty" class="default-opens-empty">
+            <span>Drag bookmarks here to add them as default opens</span>
+          </div>
+          <div id="default-opens-list" class="default-opens-list">
+            <!-- Default opens will be populated here -->
+          </div>
+        </div>
+      </div>
+
+      <!-- Add this modal for the open all confirmation -->
+      <div id="open-defaults-modal" class="modal">
+        <div class="modal-container">
+          <div class="modal-header">
+            <h2 class="modal-title">Open Default Bookmarks</h2>
+            <button class="modal-close" data-close-modal>
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+              </svg>
+            </button>
+          </div>
+
+          <div class="modal-body">
+            <p id="open-defaults-message">
+              You are about to open
+              <span id="open-defaults-count">0</span> bookmarks. How would you
+              like to open them?
+            </p>
+          </div>
+
+          <div class="modal-footer">
+            <div class="modal-actions">
+              <div class="right-actions">
+                <button
+                  id="open-defaults-cancel-btn"
+                  class="button secondary-button"
+                  data-close-modal
+                >
+                  Cancel
+                </button>
+                <button
+                  id="open-defaults-same-window-btn"
+                  class="button primary-button"
+                >
+                  Current Window
+                </button>
+                <button
+                  id="open-defaults-new-window-btn"
+                  class="button primary-button"
+                >
+                  New Window
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <main class="kanban-container">
         <div id="kanban-board" class="kanban-board">
           <!-- Columns will be populated here -->

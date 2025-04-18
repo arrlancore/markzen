@@ -103,4 +103,41 @@ export const elements = {
 
   // Close modal buttons
   closeModalButtons: document.querySelectorAll("[data-close-modal]"),
+
+  // Default opens elements
+  defaultOpensContainer: document.getElementById(
+    "default-opens-container"
+  ) as HTMLDivElement,
+  defaultOpensCount: document.getElementById(
+    "default-opens-count"
+  ) as HTMLSpanElement,
+  defaultOpensEmpty: document.getElementById(
+    "default-opens-empty"
+  ) as HTMLDivElement,
+  defaultOpensList: document.getElementById(
+    "default-opens-list"
+  ) as HTMLDivElement,
+  openAllDefaultsBtn: document.getElementById(
+    "open-all-defaults-btn"
+  ) as HTMLButtonElement,
+
+  // Open defaults modal elements
+  openDefaultsModal: document.getElementById(
+    "open-defaults-modal"
+  ) as HTMLDivElement,
+  openDefaultsMessage: document.getElementById(
+    "open-defaults-message"
+  ) as HTMLParagraphElement,
+  openDefaultsCount: document.getElementById(
+    "open-defaults-count"
+  ) as HTMLSpanElement,
+  openDefaultsCancelBtn: document.getElementById(
+    "open-defaults-cancel-btn"
+  ) as HTMLButtonElement,
+  openDefaultsSameWindowBtn: document.getElementById(
+    "open-defaults-same-window-btn"
+  ) as HTMLButtonElement,
+  openDefaultsNewWindowBtn: document.getElementById(
+    "open-defaults-new-window-btn"
+  ) as HTMLButtonElement,
 };

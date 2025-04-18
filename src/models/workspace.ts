@@ -5,6 +5,7 @@ export interface Workspace {
   createdAt: string;
   updatedAt: string;
   columnIds: string[];
+  defaultOpenIds?: string[];
   color?: string;
   icon?: string;
 }

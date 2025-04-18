@@ -1,20 +1,22 @@
 // Drag and drop functionality for the Kanban board
-import { moveBookmark } from "./data";
+import { loadData, moveBookmark, reorderBookmark } from "./data";
 import { showNotification } from "./ui-utils";
 import storageService from "../utils/storage";
 
 // Fix type declarations for draggedBookmark and draggedElement
 let draggedBookmark: string | null = null;
 let draggedElement: HTMLElement | null = null;
+// Add to the existing variables
+let dragTarget: "column" | "default-opens" | null = null;
 
 /**
- * Set up drag and drop functionality for the kanban board
+ * Set up drag and drop functionality for the kanban board and default opens
  */
 export function setupDragAndDrop(): void {
-  // Add drag start event to all bookmark cards
+  // Add drag start event to all bookmark cards and default open items
   document.addEventListener("dragstart", handleDragStart);
 
-  // Add drag events to column bodies
+  // Add drag events to column bodies and default opens area
   document.addEventListener("dragover", handleDragOver);
   document.addEventListener("dragleave", handleDragLeave);
   document.addEventListener("drop", handleDrop);
@@ -24,17 +26,23 @@ export function setupDragAndDrop(): void {
 }
 
 /**
- * Handle drag start event
+ * Handle drag start event - update to handle both bookmark cards and default open items
  */
 function handleDragStart(e: DragEvent): void {
   const target = e.target as HTMLElement;
 
-  // Check if dragged element is a bookmark card
-  if (!target.classList.contains("bookmark-card")) return;
-
-  // Set the dragged bookmark and element
-  draggedBookmark = target.dataset.id || null;
-  draggedElement = target;
+  // Check if dragged element is a bookmark card or default open item
+  if (target.classList.contains("bookmark-card")) {
+    draggedBookmark = target.dataset.id || null;
+    draggedElement = target;
+    dragTarget = "column";
+  } else if (target.classList.contains("default-open-item")) {
+    draggedBookmark = target.dataset.id || null;
+    draggedElement = target;
+    dragTarget = "default-opens";
+  } else {
+    return; // Not a draggable element
+  }
 
   // Add dragging class after a small delay to ensure it's visible during drag
   setTimeout(() => {
@@ -44,30 +52,190 @@ function handleDragStart(e: DragEvent): void {
   // Set drag data
   if (e.dataTransfer) {
     e.dataTransfer.setData("text/plain", target.dataset.id || "");
+    e.dataTransfer.setData("dragTarget", dragTarget);
     e.dataTransfer.effectAllowed = "move";
   }
 }
 
 /**
- * Handle drag over event
+ * Handle drag over event - update to handle both column bodies and default opens area
  */
 function handleDragOver(e: DragEvent): void {
   e.preventDefault();
 
   const target = e.target as HTMLElement;
+
+  // Check if target is column body or default opens area
   const columnBody = target.closest(".column-body");
-  if (!columnBody) return;
+  const defaultOpensBody = target.closest(".default-opens-body");
 
-  // Add dragging-over class
-  columnBody.classList.add("dragging-over");
+  if (!columnBody && !defaultOpensBody) return;
 
-  // Allow drop
-  if (e.dataTransfer) {
-    e.dataTransfer.dropEffect = "move";
+  // Handle drag over for column body
+  if (columnBody) {
+    // Add dragging-over class
+    columnBody.classList.add("dragging-over");
+
+    // Allow drop
+    if (e.dataTransfer) {
+      e.dataTransfer.dropEffect = "move";
+    }
+
+    // Show drop position indicator
+    updateDropPositionIndicator(columnBody, e.clientY);
   }
 
-  // Show drop position indicator
-  updateDropPositionIndicator(columnBody, e.clientY);
+  // Handle drag over for default opens area
+  if (defaultOpensBody) {
+    // Add drag-active class to container
+    const defaultOpensContainer = document.getElementById(
+      "default-opens-container"
+    );
+    if (defaultOpensContainer) {
+      defaultOpensContainer.classList.add("drag-active");
+    }
+
+    // Allow drop
+    if (e.dataTransfer) {
+      e.dataTransfer.dropEffect = "move";
+    }
+
+    // If dragging a default open item, show position indicator
+    if (dragTarget === "default-opens") {
+      updateDefaultOpensPositionIndicator(defaultOpensBody, e.clientX);
+    }
+  }
+}
+
+/**
+ * Update the position indicator for default opens area
+ */
+function updateDefaultOpensPositionIndicator(
+  defaultOpensBody: Element,
+  x: number
+): void {
+  // Remove any existing indicator
+  const existingIndicator = document.querySelector(
+    ".default-opens-placeholder"
+  );
+  if (existingIndicator) {
+    existingIndicator.remove();
+  }
+
+  // Get the default opens list element
+  const defaultOpensList = defaultOpensBody.querySelector(
+    ".default-opens-list"
+  );
+  if (!defaultOpensList) return;
+
+  // Get all items except the one being dragged
+  const items = Array.from(
+    defaultOpensList.querySelectorAll(".default-open-item:not(.dragging)")
+  );
+
+  // Create indicator
+  const indicator = document.createElement("div");
+  indicator.className = "default-opens-placeholder";
+
+  // Find where to insert the indicator
+  let insertBefore = null;
+
+  for (const item of items) {
+    const rect = item.getBoundingClientRect();
+    const middle = rect.left + rect.width / 2;
+
+    if (x < middle) {
+      insertBefore = item;
+      break;
+    }
+  }
+
+  if (insertBefore) {
+    defaultOpensList.insertBefore(indicator, insertBefore);
+  } else {
+    defaultOpensList.appendChild(indicator);
+  }
+}
+
+/**
+ * Handle drag leave event - update to handle both column bodies and default opens area
+ */
+function handleDragLeave(e: DragEvent): void {
+  const target = e.target as HTMLElement;
+  const relatedTarget = e.relatedTarget as HTMLElement;
+
+  // Handle leaving column body
+  const columnBody = target.closest(".column-body");
+  if (columnBody && !columnBody.contains(relatedTarget)) {
+    columnBody.classList.remove("dragging-over");
+
+    // Remove drop indicator when leaving the column
+    const indicator = columnBody.querySelector(".drop-placeholder");
+    if (indicator) {
+      indicator.remove();
+    }
+  }
+
+  // Handle leaving default opens area
+  const defaultOpensBody = target.closest(".default-opens-body");
+  if (defaultOpensBody && !defaultOpensBody.contains(relatedTarget)) {
+    const defaultOpensContainer = document.getElementById(
+      "default-opens-container"
+    );
+    if (defaultOpensContainer) {
+      defaultOpensContainer.classList.remove("drag-active");
+    }
+
+    // Remove drop indicator when leaving the default opens area
+    const indicator = defaultOpensBody.querySelector(
+      ".default-opens-placeholder"
+    );
+    if (indicator) {
+      indicator.remove();
+    }
+  }
+}
+
+/**
+ * Handle drag end event - clean up regardless of whether drop succeeded
+ */
+function handleDragEnd(): void {
+  // Clean up
+  const dragIndicator = document.querySelector(".drop-placeholder");
+  const defaultOpensIndicator = document.querySelector(
+    ".default-opens-placeholder"
+  );
+
+  if (dragIndicator) {
+    dragIndicator.remove();
+  }
+
+  if (defaultOpensIndicator) {
+    defaultOpensIndicator.remove();
+  }
+
+  // Remove dragging-over class from all columns
+  document.querySelectorAll(".column-body").forEach((column) => {
+    column.classList.remove("dragging-over");
+  });
+
+  // Remove drag-active class from default opens container
+  const defaultOpensContainer = document.getElementById(
+    "default-opens-container"
+  );
+  if (defaultOpensContainer) {
+    defaultOpensContainer.classList.remove("drag-active");
+  }
+
+  // Remove dragging class
+  if (draggedElement) {
+    draggedElement.classList.remove("dragging");
+  }
+
+  // Reset dragged items
+  draggedBookmark = null;
+  draggedElement = null;
+  dragTarget = null;
 }
 
 /**
@@ -108,74 +276,97 @@ function updateDropPositionIndicator(columnBody: Element, y: number): void {
     columnBody.appendChild(indicator);
   }
 }
-
 /**
- * Handle drag leave event
+ * Handle drop event for both column bodies and default opens area
  */
-function handleDragLeave(e: DragEvent): void {
-  const target = e.target as HTMLElement;
-  const columnBody = target.closest(".column-body");
-  if (!columnBody) return;
-
-  const relatedTarget = e.relatedTarget as HTMLElement;
-  if (!columnBody.contains(relatedTarget)) {
-    columnBody.classList.remove("dragging-over");
-
-    // Remove drop indicator when leaving the column
-    const indicator = columnBody.querySelector(".drop-placeholder");
-    if (indicator) {
-      indicator.remove();
-    }
-  }
-}
-
-/**
- * Handle drag end event - clean up regardless of whether drop succeeded
- */
-function handleDragEnd(): void {
-  // Clean up
-  const dragIndicator = document.querySelector(".drop-placeholder");
-  if (dragIndicator) {
-    dragIndicator.remove();
-  }
-
-  // Remove dragging-over class from all columns
-  document.querySelectorAll(".column-body").forEach((column) => {
-    column.classList.remove("dragging-over");
-  });
-
-  // Remove dragging class
-  if (draggedElement) {
-    draggedElement.classList.remove("dragging");
-  }
-
-  // Reset dragged items
-  draggedBookmark = null;
-  draggedElement = null;
-}
-
-// In src/kanban/drag-drop.ts
-// Replace the handleDrop function with this improved version
-
 async function handleDrop(e: DragEvent): Promise<void> {
   e.preventDefault();
 
-  // Get target column
+  // Get target element
   const target = e.target as HTMLElement;
-  const columnBody = target.closest(".column-body") as HTMLElement;
-  if (!columnBody) return;
 
-  // Get IDs
+  // Check if target is column body or default opens area
+  const columnBody = target.closest(".column-body");
+  const defaultOpensBody = target.closest(".default-opens-body");
+
+  if (!columnBody && !defaultOpensBody) return;
+
+  // Get bookmark ID from dataTransfer
   const bookmarkId = e.dataTransfer?.getData("text/plain");
   if (!bookmarkId) return;
 
-  // Get column IDs using dataset
+  // Get drag source from dataTransfer
+  const sourceDragTarget = e.dataTransfer?.getData("dragTarget") as
+    | "column"
+    | "default-opens"
+    | "";
+
+  try {
+    // Handle drop on column body
+    if (columnBody) {
+      await handleDropOnColumn(
+        e,
+        columnBody as HTMLElement,
+        bookmarkId,
+        sourceDragTarget
+      );
+    }
+
+    // Handle drop on default opens area
+    if (defaultOpensBody) {
+      await handleDropOnDefaultOpens(
+        e,
+        defaultOpensBody as HTMLElement,
+        bookmarkId,
+        sourceDragTarget
+      );
+    }
+  } catch (error) {
+    showNotification(`Error moving item: ${(error as Error).message}`, "error");
+  }
+}
+
+/**
+ * Handle dropping an item on a column
+ */
+async function handleDropOnColumn(
+  e: DragEvent,
+  columnBody: HTMLElement,
+  bookmarkId: string,
+  sourceDragTarget: "column" | "default-opens" | ""
+): Promise<void> {
+  // Get column ID
   const targetColumnId = columnBody.dataset.columnId;
   if (!targetColumnId) {
     console.error("Target column ID not found");
     return;
   }
 
+  // If dropped from default opens, only remove the checkmark indicator
+  // as the bookmark is already in the column
+  if (sourceDragTarget === "default-opens") {
+    // Get the active workspace
+    const data = await loadData();
+    const workspaceId = data.activeWorkspaceId;
+
+    // Remove from default opens
+    await storageService.removeDefaultOpen(workspaceId, bookmarkId);
+
+    // Clean up visual elements
+    columnBody.classList.remove("dragging-over");
+    const indicator = document.querySelector(".drop-placeholder");
+    if (indicator) {
+      indicator.remove();
+    }
+
+    // Refresh UI to reflect changes
+    const refreshEvent = new CustomEvent("kanban:refresh");
+    document.dispatchEvent(refreshEvent);
+
+    return;
+  }
+
+  // Otherwise, it's a regular column-to-column drag, proceed with normal handling
   // Find the source column
   const bookmarkElement = document.querySelector(
     `.bookmark-card[data-id="${bookmarkId}"]`
@@ -215,8 +406,6 @@ async function handleDrop(e: DragEvent): Promise<void> {
     columnBody.querySelectorAll(".bookmark-card:not(.dragging)")
   );
 
-  console.log(`Target column has ${cards.length} cards`);
-
   // Find position based on cursor Y position
   for (let i = 0; i < cards.length; i++) {
     const rect = cards[i].getBoundingClientRect();
@@ -231,81 +420,114 @@ async function handleDrop(e: DragEvent): Promise<void> {
     }
   }
 
-  console.log(`Drop position: ${targetPosition}`);
+  // Handle reordering within the same column or moving between columns
+  if (sourceColumnId === targetColumnId) {
+    // Reordering within the same column
+    await reorderBookmark(bookmarkId, targetColumnId, targetPosition);
+  } else {
+    // Moving between columns
+    await moveBookmark(
+      bookmarkId,
+      sourceColumnId,
+      targetColumnId,
+      targetPosition
+    );
+  }
 
+  // Refresh UI to reflect the changes
+  const refreshEvent = new CustomEvent("kanban:refresh");
+  document.dispatchEvent(refreshEvent);
+}
+
+/**
+ * Handle dropping an item on the default opens area
+ */
+async function handleDropOnDefaultOpens(
+  e: DragEvent,
+  defaultOpensBody: HTMLElement,
+  bookmarkId: string,
+  sourceDragTarget: "column" | "default-opens" | ""
+): Promise<void> {
   try {
-    if (sourceColumnId === targetColumnId) {
-      console.log(
-        `Reordering bookmark ${bookmarkId} within column ${targetColumnId} to position ${targetPosition}`
-      );
+    // Get the active workspace
+    const data = await loadData();
+    const workspaceId = data.activeWorkspaceId;
 
-      // Get the column data directly from storage to ensure we're working with the latest data
-      const column = await storageService.getColumn(targetColumnId);
-      if (!column) throw new Error("Column not found");
-
-      // Get current position in data
-      const currentIndex = column.bookmarkIds.indexOf(bookmarkId);
-      if (currentIndex === -1) throw new Error("Bookmark not found in column");
-
-      console.log(`Current position in data: ${currentIndex}`);
-      console.log(
-        `Bookmark IDs before reordering: ${column.bookmarkIds.join(", ")}`
-      );
-
-      // Create a new order array
-      const newBookmarkIds = [...column.bookmarkIds];
-
-      // Remove from current position
-      newBookmarkIds.splice(currentIndex, 1);
-
-      // Insert at new position with correction
-      // If the target is after the current position, adjust for the removal
-      let adjustedPosition = targetPosition;
-      if (targetPosition > currentIndex) {
-        adjustedPosition--;
-      }
-
-      // Ensure position is in bounds
-      adjustedPosition = Math.max(
-        0,
-        Math.min(adjustedPosition, newBookmarkIds.length)
-      );
-
-      // Insert at new position
-      newBookmarkIds.splice(adjustedPosition, 0, bookmarkId);
-
-      console.log(
-        `Bookmark IDs after reordering: ${newBookmarkIds.join(", ")}`
-      );
-
-      // Update column
-      column.bookmarkIds = newBookmarkIds;
-      await storageService.saveColumn(column);
-
-      console.log("Reordering complete");
-    } else {
-      // Moving between columns
-      console.log(
-        `Moving bookmark ${bookmarkId} from column ${sourceColumnId} to column ${targetColumnId} at position ${targetPosition}`
-      );
-
-      // Handle cross-column movement differently to ensure data consistency
-      await moveBookmark(
-        bookmarkId,
-        sourceColumnId,
-        targetColumnId,
-        targetPosition
-      );
+    // Clean up visual elements
+    const defaultOpensContainer = document.getElementById(
+      "default-opens-container"
+    );
+    if (defaultOpensContainer) {
+      defaultOpensContainer.classList.remove("drag-active");
     }
 
-    // Refresh UI to reflect the changes
+    const indicator = document.querySelector(".default-opens-placeholder");
+    if (indicator) {
+      indicator.remove();
+    }
+
+    // If dragging from a column to default opens (adding new default open)
+    if (sourceDragTarget === "column" || sourceDragTarget === "") {
+      // Add to default opens
+      await storageService.addDefaultOpen(workspaceId, bookmarkId);
+      showNotification("Added to default opens", "success");
+    }
+    // If reordering within default opens
+    else if (sourceDragTarget === "default-opens") {
+      const workspace = await storageService.getWorkspace(workspaceId);
+      if (!workspace || !workspace.defaultOpenIds) {
+        throw new Error("Workspace or default opens not found");
+      }
+
+      // Determine new order
+      let newOrder = [...workspace.defaultOpenIds];
+
+      // Get all items in default opens list
+      const defaultOpensList = defaultOpensBody.querySelector(
+        ".default-opens-list"
+      );
+      if (!defaultOpensList) {
+        throw new Error("Default opens list element not found");
+      }
+
+      const items = Array.from(
+        defaultOpensList.querySelectorAll(".default-open-item:not(.dragging)")
+      );
+
+      // Remove the dragged bookmark from current position
+      newOrder = newOrder.filter((id) => id !== bookmarkId);
+
+      // Find new position based on cursor X position
+      let newPosition = newOrder.length; // Default to end
+
+      for (let i = 0; i < items.length; i++) {
+        const rect = items[i].getBoundingClientRect();
+        const itemId = (items[i] as HTMLElement).dataset.id;
+
+        if (e.clientX < rect.left + rect.width / 2) {
+          // Find the position in newOrder array
+          newPosition = newOrder.findIndex((id) => id === itemId);
+          if (newPosition === -1) newPosition = i;
+          break;
+        }
+      }
+
+      // Insert at new position
+      newOrder.splice(newPosition, 0, bookmarkId);
+
+      // Update default opens order
+      await storageService.reorderDefaultOpens(workspaceId, newOrder);
+    }
+
+    // Refresh UI to reflect changes
     const refreshEvent = new CustomEvent("kanban:refresh");
     document.dispatchEvent(refreshEvent);
   } catch (error) {
-    showNotification(
-      `Error moving bookmark: ${(error as Error).message}`,
-      "error"
-    );
+    if ((error as Error).message.includes("Maximum number")) {
+      showNotification("Maximum number of default opens reached (10)", "error");
+    } else {
+      throw error;
+    }
   }
 }
 

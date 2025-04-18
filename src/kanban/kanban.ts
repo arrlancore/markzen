@@ -2,14 +2,19 @@
 import "./kanban.css";
 import { elements } from "./elements";
 import { KanbanState } from "./types";
-import { showNotification, openUrl } from "./ui-utils";
+import { showNotification, openUrl, openModal, closeModal } from "./ui-utils";
 import * as dataService from "./data";
-import { createColumnElement } from "./component-factory";
+import {
+  createBookmarkElement,
+  createColumnElement,
+  createDefaultOpenElement,
+} from "./component-factory";
 import { setupDragAndDrop, cleanupDragAndDrop } from "./drag-drop";
 import * as modals from "./modals";
 import themeService from "@/utils/theme-service";
 import storageService, { AppSettings } from "@/utils/storage";
 import { Column } from "@/models/bookmark";
+import analyticsService from "@/utils/analytics";
 
 // Current application state
 let state: KanbanState = {
@@ -39,12 +44,14 @@ async function initKanban(): Promise<void> {
     // Render UI
     await themeService.applyTheme(appSettings.theme);
     renderWorkspaceSelector();
+    await renderDefaultOpens(); // Add this line to render default opens
     renderKanbanBoard();
 
     // Set up event listeners
     setupEventListeners();
     setupDragAndDrop();
     modals.initModalHandlers();
+    setupDefaultOpensHandlers(); // Add this line to set up default opens handlers
 
     // Listen for refresh events
     document.addEventListener("kanban:refresh", handleRefresh);
@@ -58,6 +65,57 @@ async function initKanban(): Promise<void> {
   } catch (error) {
     showNotification(
       `Error initializing Kanban board: ${(error as Error).message}`,
+      "error"
+    );
+  }
+}
+
+// Add function to set up default opens event handlers
+function setupDefaultOpensHandlers(): void {
+  // Open all defaults button
+  elements.openAllDefaultsBtn.addEventListener("click", handleOpenAllDefaults);
+
+  // Open defaults modal buttons
+  elements.openDefaultsSameWindowBtn.addEventListener(
+    "click",
+    openDefaultsInCurrentWindow
+  );
+  elements.openDefaultsNewWindowBtn.addEventListener(
+    "click",
+    openDefaultsInNewWindow
+  );
+}
+
+// Update the createBookmarkElement function to check if bookmark is in default opens
+function isBookmarkInDefaultOpens(bookmarkId: string): boolean {
+  // Check if the active workspace has defaultOpenIds and if bookmarkId is in it
+  const workspace = state.workspaces[state.activeWorkspaceId];
+  return !!(
+    workspace &&
+    workspace.defaultOpenIds &&
+    workspace.defaultOpenIds.includes(bookmarkId)
+  );
+}
+
+// Update the handleRefresh function to include default opens
+async function handleRefresh(): Promise<void> {
+  await loadData();
+  renderWorkspaceSelector();
+  await renderDefaultOpens(); // Add this line
+  renderKanbanBoard();
+}
+
+// Update handleWorkspaceChange to refresh default opens
+async function handleWorkspaceChange(): Promise<void> {
+  try {
+    const selectedWorkspaceId = elements.workspaceSelect.value;
+    state.activeWorkspaceId = selectedWorkspaceId;
+    await dataService.switchWorkspace(selectedWorkspaceId);
+    await renderDefaultOpens(); // Add this line
+    renderKanbanBoard();
+  } catch (error) {
+    showNotification(
+      `Error switching workspace: ${(error as Error).message}`,
       "error"
     );
   }
@@ -153,23 +211,6 @@ function setupEventListeners(): void {
 
   // Add bookmark button (if it exists)
   elements.addBookmarkBtn?.addEventListener("click", handleAddCurrentPage);
-}
-
-/**
- * Handle workspace change
- */
-async function handleWorkspaceChange(): Promise<void> {
-  try {
-    const selectedWorkspaceId = elements.workspaceSelect.value;
-    state.activeWorkspaceId = selectedWorkspaceId;
-    await dataService.switchWorkspace(selectedWorkspaceId);
-    renderKanbanBoard();
-  } catch (error) {
-    showNotification(
-      `Error switching workspace: ${(error as Error).message}`,
-      "error"
-    );
-  }
 }
 
 /**
@@ -299,13 +340,145 @@ async function archiveBookmark(
   }
 }
 
+async function renderDefaultOpens(): Promise<void> {
+  try {
+    // Get default opens for active workspace
+    const defaultOpens = await storageService.getDefaultOpens(
+      state.activeWorkspaceId
+    );
+
+    // Get all bookmarks in the workspace to check if any exist
+    const workspaceBookmarks = Object.values(state.bookmarks).filter(
+      (bookmark) => bookmark.workspaceId === state.activeWorkspaceId
+    );
+
+    // If no bookmarks in workspace, hide default opens container
+    if (workspaceBookmarks.length === 0) {
+      elements.defaultOpensContainer.classList.add("hidden");
+      return;
+    }
+
+    // Show default opens container
+    elements.defaultOpensContainer.classList.remove("hidden");
+
+    // Update count
+    elements.defaultOpensCount.textContent = defaultOpens.length.toString();
+
+    // Clear previous content
+    elements.defaultOpensList.innerHTML = "";
+
+    // Show/hide empty state and button
+    if (defaultOpens.length === 0) {
+      elements.defaultOpensEmpty.classList.remove("hidden");
+      elements.openAllDefaultsBtn.classList.add("hidden");
+    } else {
+      elements.defaultOpensEmpty.classList.add("hidden");
+      elements.openAllDefaultsBtn.classList.remove("hidden");
+
+      // Create default open elements
+      defaultOpens.forEach((bookmark) => {
+        const defaultOpenElement = createDefaultOpenElement(bookmark, {
+          removeDefaultOpen: (id) => handleRemoveDefaultOpen(id),
+        });
+
+        elements.defaultOpensList.appendChild(defaultOpenElement);
+      });
+    }
+  } catch (error) {
+    showNotification(
+      `Error rendering default opens: ${(error as Error).message}`,
+      "error"
+    );
+  }
+}
+
 /**
- * Handle refresh event
+ * Handle removing a bookmark from default opens
  */
-async function handleRefresh(): Promise<void> {
-  await loadData();
-  renderWorkspaceSelector();
-  renderKanbanBoard();
+async function handleRemoveDefaultOpen(bookmarkId: string): Promise<void> {
+  try {
+    await storageService.removeDefaultOpen(state.activeWorkspaceId, bookmarkId);
+
+    // Refresh UI
+    await renderDefaultOpens();
+
+    // Also refresh all bookmarks to update indicators
+    renderKanbanBoard();
+
+    showNotification("Removed from default opens", "success");
+  } catch (error) {
+    showNotification(
+      `Error removing default open: ${(error as Error).message}`,
+      "error"
+    );
+  }
+}
+
+/**
+ * Handle opening all default bookmarks
+ */
+function handleOpenAllDefaults(): void {
+  // Get count of default opens
+  const count = parseInt(elements.defaultOpensCount.textContent || "0", 10);
+
+  if (count === 0) {
+    showNotification("No default opens to open", "warning");
+    return;
+  }
+
+  // Update modal content
+  elements.openDefaultsCount.textContent = count.toString();
+
+  // Show modal
+  openModal(elements.openDefaultsModal);
+}
+
+/**
+ * Open all default bookmarks in current window
+ */
+async function openDefaultsInCurrentWindow() {
+  try {
+    const defaultOpens = await storageService.getDefaultOpens(
+      state.activeWorkspaceId
+    );
+    // Use existing trackBookmarkClick instead of trackBookmarkVisit
+    for (const bookmark of defaultOpens) {
+      await analyticsService.trackBookmarkClick(bookmark.id);
+    }
+
+    await storageService.openDefaultBookmarks(state.activeWorkspaceId, false);
+    closeModal(elements.openDefaultsModal);
+    showNotification("Opening default bookmarks", "success");
+  } catch (error) {
+    showNotification(
+      `Error opening default bookmarks: ${(error as Error).message}`,
+      "error"
+    );
+  }
+}
+
+/**
+ * Open all default bookmarks in new window
+ */
+async function openDefaultsInNewWindow() {
+  try {
+    const defaultOpens = await storageService.getDefaultOpens(
+      state.activeWorkspaceId
+    );
+    // Use existing trackBookmarkClick instead of trackBookmarkVisit
+    for (const bookmark of defaultOpens) {
+      await analyticsService.trackBookmarkClick(bookmark.id);
+    }
+
+    await storageService.openDefaultBookmarks(state.activeWorkspaceId, true);
+    closeModal(elements.openDefaultsModal);
+    showNotification("Opening default bookmarks in new window", "success");
+  } catch (error) {
+    showNotification(
+      `Error opening default bookmarks: ${(error as Error).message}`,
+      "error"
+    );
+  }
 }
 
 /**

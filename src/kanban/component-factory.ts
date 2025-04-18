@@ -8,6 +8,7 @@ import {
   checkBookmarkExpiration,
   formatTimeSinceLastVisit,
 } from "@/utils/expiration-utils";
+import { showNotification } from "./ui-utils";
 
 // Import or declare settings at the top of the file
 let appSettings: any = null;
@@ -86,24 +87,37 @@ export function createColumnElement(
       .map((id) => state.bookmarks[id])
       .filter((bookmark) => bookmark !== undefined);
     // Create bookmark elements
+    // Inside createColumnElement function, where bookmarks are created:
+    // Get all default open IDs for the current workspace
+    const workspace = state.workspaces[state.activeWorkspaceId];
+    const defaultOpenIds = workspace?.defaultOpenIds || [];
+
+    // Create bookmark elements
     columnBookmarks.forEach((bookmark) => {
-      const bookmarkElement = createBookmarkElement(bookmark, {
-        editBookmark: (id) => {
-          modals.openEditBookmarkModal(id, state.bookmarks);
+      // Check if bookmark is in default opens
+      const isDefaultOpen = defaultOpenIds.includes(bookmark.id);
+
+      const bookmarkElement = createBookmarkElement(
+        bookmark,
+        {
+          editBookmark: (id) => {
+            modals.openEditBookmarkModal(id, state.bookmarks);
+          },
+          deleteBookmark: (id) => {
+            // Set up the necessary state and show delete modal
+            modals.confirmBookmarkDeletion(
+              id,
+              bookmark.columnId,
+              state.bookmarks
+            );
+          },
+          archiveBookmark: (id, columnId) => {
+            // Call the archive function
+            callbacks.archiveBookmark(id, columnId);
+          },
         },
-        deleteBookmark: (id) => {
-          // Set up the necessary state and show delete modal
-          modals.confirmBookmarkDeletion(
-            id,
-            bookmark.columnId,
-            state.bookmarks
-          );
-        },
-        archiveBookmark: (id, columnId) => {
-          // Call the archive function
-          callbacks.archiveBookmark(id, columnId);
-        },
-      });
+        isDefaultOpen
+      ); // Pass the isDefaultOpen flag
 
       bookmarkElement
         .then((bookmarkElementResolved) => {
@@ -141,10 +155,13 @@ export function createColumnElement(
   return columnElement;
 }
 
+// Update the createBookmarkElement function in src/kanban/component-factory.ts
+
 /**
  * Create a bookmark element
  * @param bookmark The bookmark data
  * @param callbacks Object containing event callbacks
+ * @param isDefaultOpen Whether the bookmark is a default open
  */
 export async function createBookmarkElement(
   bookmark: Bookmark,
@@ -152,7 +169,8 @@ export async function createBookmarkElement(
     editBookmark: (id: string) => void;
     deleteBookmark: (id: string) => void;
     archiveBookmark?: (id: string, columnId: string) => void;
-  }
+  },
+  isDefaultOpen: boolean = false // Add this parameter
 ): Promise<HTMLElement> {
   // Ensure settings are loaded
   if (!appSettings) {
@@ -358,5 +376,78 @@ export async function createBookmarkElement(
     openBookmark(bookmark.id, bookmark.url);
   });
 
+  // Add default open indicator if bookmark is a default open
+  if (isDefaultOpen) {
+    const defaultIndicator = document.createElement("div");
+    defaultIndicator.className = "bookmark-default-indicator";
+    defaultIndicator.innerHTML = `
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M20 6L9 17l-5-5"></path>
+      </svg>
+    `;
+    bookmarkElement.appendChild(defaultIndicator);
+  }
+
   return bookmarkElement;
+}
+
+// Add this function to src/kanban/component-factory.ts
+
+/**
+ * Create a default open item element
+ * @param bookmark The bookmark data
+ * @param callbacks Object containing event callbacks
+ */
+export function createDefaultOpenElement(
+  bookmark: Bookmark,
+  callbacks: {
+    removeDefaultOpen: (id: string) => void;
+  }
+): HTMLElement {
+  // Create default open container
+  const defaultOpenElement = document.createElement("div");
+  defaultOpenElement.className = "default-open-item";
+  defaultOpenElement.dataset.id = bookmark.id;
+  defaultOpenElement.draggable = true;
+
+  // Create favicon
+  const favicon = document.createElement("img");
+  favicon.className = "default-open-favicon";
+  favicon.src = bookmark.favicon || "../assets/images/default-favicon.png";
+  favicon.alt = "";
+
+  // Create title
+  const title = document.createElement("div");
+  title.className = "default-open-title";
+  title.textContent = bookmark.title;
+  title.title = bookmark.title; // Add tooltip with full title
+
+  // Create remove button
+  const removeBtn = document.createElement("button");
+  removeBtn.className = "default-open-remove";
+  removeBtn.title = "Remove from default opens";
+  removeBtn.innerHTML = `
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <line x1="18" y1="6" x2="6" y2="18"></line>
+      <line x1="6" y1="6" x2="18" y2="18"></line>
+    </svg>
+  `;
+
+  // Add remove event listener
+  removeBtn.addEventListener("click", (e) => {
+    e.stopPropagation(); // Prevent opening the bookmark
+    callbacks.removeDefaultOpen(bookmark.id);
+  });
+
+  // Assemble default open item
+  defaultOpenElement.appendChild(favicon);
+  defaultOpenElement.appendChild(title);
+  defaultOpenElement.appendChild(removeBtn);
+
+  // Add click event to open bookmark
+  defaultOpenElement.addEventListener("click", () => {
+    openBookmark(bookmark.id, bookmark.url);
+  });
+
+  return defaultOpenElement;
 }
