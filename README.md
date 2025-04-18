@@ -2,6 +2,10 @@
 
 MarkZen is a Chrome extension that transforms browser bookmarks from a cluttered list into a visually organized workspace, bringing clarity and calm to your digital life while respecting your privacy. You have the flexibility to choose between local storage or Chrome sync to store your bookmarks and settings.
 
+Sync Storage Notes: 
+- If the user isn't signed in: The sync storage works, but data remains only on that device - it's essentially the same as local storage in behavior.
+- If the user signs in: Chrome will automatically sync that storage data across all their devices where they're signed in with the same account.
+
 ## Features
 
 - **Kanban-style Bookmark Management**: Visual drag-and-drop organization across customizable columns
@@ -97,5 +101,13 @@ MarkZen uses Chrome's storage API to store all data locally:
 - No external servers or accounts required
 
 ## License
+
+## TODO
+- [ ] auto populate meta description to description and keywords to tag if we add to bookmurk from popup
+- [ ] simple auto complete search feature
+- [ ] impement default open features
+- [ ] test from fresh data and perform all features
+- [ ] a simple note, show note icon on new tab, when click it show a modal for user to start writing, it will stored on 
+- [ ] publish it  
 
 MIT
