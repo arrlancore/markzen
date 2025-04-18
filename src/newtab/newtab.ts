@@ -22,6 +22,45 @@ const topBookmarksList = document.getElementById(
 const photoCreditElement = document.getElementById(
   "photo-credit"
 ) as HTMLDivElement;
+// Add these new DOM Elements
+const workspaceInfo = document.getElementById(
+  "workspace-info"
+) as HTMLDivElement;
+const activeWorkspaceName = document.getElementById(
+  "active-workspace-name"
+) as HTMLSpanElement;
+const openAllContainer = document.getElementById(
+  "open-all-container"
+) as HTMLDivElement;
+const openAllDefaultsBtn = document.getElementById(
+  "open-all-defaults-btn"
+) as HTMLButtonElement;
+const defaultOpensCount = document.getElementById(
+  "default-opens-count"
+) as HTMLSpanElement;
+
+// Modal elements
+const openDefaultsModal = document.getElementById(
+  "open-defaults-modal"
+) as HTMLDivElement;
+const modalDefaultOpensCount = document.getElementById(
+  "modal-default-opens-count"
+) as HTMLSpanElement;
+const modalWorkspaceName = document.getElementById(
+  "modal-workspace-name"
+) as HTMLSpanElement;
+const closeModalBtn = document.getElementById(
+  "close-modal-btn"
+) as HTMLButtonElement;
+const openDefaultsCancelBtn = document.getElementById(
+  "open-defaults-cancel-btn"
+) as HTMLButtonElement;
+const openDefaultsSameWindowBtn = document.getElementById(
+  "open-defaults-same-window-btn"
+) as HTMLButtonElement;
+const openDefaultsNewWindowBtn = document.getElementById(
+  "open-defaults-new-window-btn"
+) as HTMLButtonElement;
 
 // State
 let bookmarks: Record<string, Bookmark> = {};
@@ -44,10 +83,59 @@ async function initNewTab() {
     setInterval(updateClock, 1000);
 
     await loadData();
+
+    // Load workspace information and default opens
+    await loadWorkspaceInfo();
+
     renderTopBookmarks();
     addEventListeners();
   } catch (error) {
     console.error("Error initializing new tab:", error);
+  }
+}
+
+async function loadWorkspaceInfo(): Promise<void> {
+  try {
+    // Get workspace settings
+    const workspaceSettings = await storageService.getWorkspaceSettings();
+    const activeWorkspaceId =
+      workspaceSettings?.lastVisitedWorkspaceId || "default";
+
+    // Get workspace info
+    const workspaces = await storageService.getWorkspaces();
+    const activeWorkspace = workspaces[activeWorkspaceId];
+
+    if (activeWorkspace) {
+      // Update workspace name
+      const activeWorkspaceName = document.getElementById(
+        "active-workspace-name"
+      );
+      if (activeWorkspaceName) {
+        activeWorkspaceName.textContent = activeWorkspace.name;
+      }
+
+      // Get default opens
+      const defaultOpens = await storageService.getDefaultOpens(
+        activeWorkspaceId
+      );
+      const count = defaultOpens.length;
+
+      // Update count
+      if (defaultOpensCount) {
+        defaultOpensCount.textContent = count.toString();
+      }
+
+      // Show/hide open all container based on count
+      if (openAllContainer) {
+        if (count > 0) {
+          openAllContainer.classList.remove("hidden");
+        } else {
+          openAllContainer.classList.add("hidden");
+        }
+      }
+    }
+  } catch (error) {
+    console.error("Error loading workspace info:", error);
   }
 }
 
@@ -170,13 +258,140 @@ function showSettings() {
   });
 }
 
+/**
+ * Handle opening all default bookmarks
+ */
+function handleOpenAllDefaults(): void {
+  // Get count of default opens
+  const count = parseInt(defaultOpensCount.textContent || "0", 10);
+
+  if (count === 0) {
+    showNotification("No default opens to open", "warning");
+    return;
+  }
+
+  // Update modal content
+  modalDefaultOpensCount.textContent = count.toString();
+
+  // Set the workspace name in the modal
+  if (modalWorkspaceName) {
+    const activeWorkspaceName = document.getElementById(
+      "active-workspace-name"
+    );
+    if (activeWorkspaceName) {
+      modalWorkspaceName.textContent =
+        activeWorkspaceName.textContent || "Default";
+    }
+  }
+
+  // Show modal
+  openDefaultsModal.classList.add("active");
+}
+
+/**
+ * Open all default bookmarks in current window
+ */
+async function openDefaultsInCurrentWindow() {
+  try {
+    const workspaceSettings = await storageService.getWorkspaceSettings();
+    const activeWorkspaceId =
+      workspaceSettings?.lastVisitedWorkspaceId || "default";
+
+    await storageService.openDefaultBookmarks(activeWorkspaceId, false);
+    openDefaultsModal.classList.remove("active");
+    showNotification("Opening default bookmarks", "success");
+  } catch (error) {
+    console.error(`Error opening default bookmarks: ${error}`);
+    showNotification(
+      `Error opening bookmarks: ${(error as Error).message}`,
+      "error"
+    );
+  }
+}
+
+/**
+ * Open all default bookmarks in new window
+ */
+async function openDefaultsInNewWindow() {
+  try {
+    const workspaceSettings = await storageService.getWorkspaceSettings();
+    const activeWorkspaceId =
+      workspaceSettings?.lastVisitedWorkspaceId || "default";
+
+    await storageService.openDefaultBookmarks(activeWorkspaceId, true);
+    openDefaultsModal.classList.remove("active");
+    showNotification("Opening default bookmarks in new window", "success");
+  } catch (error) {
+    console.error(`Error opening default bookmarks: ${error}`);
+    showNotification(
+      `Error opening bookmarks: ${(error as Error).message}`,
+      "error"
+    );
+  }
+}
+
+/**
+ * Show a notification
+ */
+function showNotification(
+  message: string,
+  type: "success" | "error" | "warning" = "success"
+): void {
+  // Create a notification element if it doesn't exist
+  let notification = document.getElementById("notification");
+
+  if (!notification) {
+    notification = document.createElement("div");
+    notification.id = "notification";
+    notification.className = "notification";
+
+    const notificationMessage = document.createElement("span");
+    notificationMessage.className = "notification-message";
+
+    notification.appendChild(notificationMessage);
+    document.body.appendChild(notification);
+  }
+
+  const notificationMessage = notification.querySelector(
+    ".notification-message"
+  );
+  if (notificationMessage) {
+    notificationMessage.textContent = message;
+  }
+
+  // Set the type
+  notification.className = `notification ${type}`;
+
+  // Show the notification
+  notification.classList.remove("hidden");
+
+  // Hide after 3 seconds
+  setTimeout(() => {
+    if (notification) {
+      notification.classList.add("hidden");
+    }
+  }, 3000);
+}
+
 // Add event listeners
 function addEventListeners() {
-  // Show Kanban board
+  // Existing event listeners
   showKanbanBtn.addEventListener("click", showKanbanBoard);
-
-  // Show settings
   settingsBtn.addEventListener("click", showSettings);
+
+  // Add new event listeners for default opens
+  openAllDefaultsBtn.addEventListener("click", handleOpenAllDefaults);
+  closeModalBtn.addEventListener("click", () =>
+    openDefaultsModal.classList.remove("active")
+  );
+  openDefaultsCancelBtn.addEventListener("click", () =>
+    openDefaultsModal.classList.remove("active")
+  );
+  openDefaultsSameWindowBtn.addEventListener(
+    "click",
+    openDefaultsInCurrentWindow
+  );
+  openDefaultsNewWindowBtn.addEventListener("click", openDefaultsInNewWindow);
 }
 
 // Initialize when DOM is loaded
