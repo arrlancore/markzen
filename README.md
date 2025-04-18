@@ -13,6 +13,7 @@ Sync Storage Notes:
 - **Enhanced New Tab Experience**: Beautiful background images, clock, and most frequently used bookmarks
 - **Privacy-Focused**: All data stored locally with no login required
 - **Usage Analytics**: Track bookmark engagement to surface most valuable resources
+- **Open Multiple Bookmarks**: One click to open all bookmarks that set as default on a workspace
 
 ## Project Structure
 
@@ -105,7 +106,7 @@ MarkZen uses Chrome's storage API to store all data locally:
 ## TODO
 - [ ] auto populate meta description to description and keywords to tag if we add to bookmurk from popup
 - [ ] simple auto complete search feature
-- [ ] impement default open features
+- [x] impement default open features
 - [ ] test from fresh data and perform all features
 - [ ] a simple note, show note icon on new tab, when click it show a modal for user to start writing, it will stored on 
 - [ ] publish it  
