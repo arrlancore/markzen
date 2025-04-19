@@ -2,6 +2,9 @@
 
 MarkZen is a Chrome extension that transforms browser bookmarks from a cluttered list into a visually organized workspace, bringing clarity and calm to your digital life while respecting your privacy. You have the flexibility to choose between local storage or Chrome sync to store your bookmarks and settings.
 
+The search is integrated directly into the new tab page, appearing as a clean search icon in the top-right corner next to your existing Kanban board and settings icons. When clicked, it displays a beautiful semi-transparent modal with a search input field.
+As the user types, the search automatically filters through all bookmarks across all workspaces, looking for matches in both titles and URLs. It prioritizes title matches over URL matches
+
 Sync Storage Notes: 
 - If the user isn't signed in: The sync storage works, but data remains only on that device - it's essentially the same as local storage in behavior.
 - If the user signs in: Chrome will automatically sync that storage data across all their devices where they're signed in with the same account.

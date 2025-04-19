@@ -1,3 +1,5 @@
+// Update src/background/index.ts to handle search-related message types
+
 import storageService from "../utils/storage";
 import analyticsService from "../utils/analytics";
 
@@ -21,17 +23,66 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true;
   }
 
+  // This will handle opening a bookmark and tracking the click
   if (message.type === "OPEN_BOOKMARK") {
-    // Track the click first
-    analyticsService
-      .trackBookmarkClick(message.bookmarkId)
-      .then(() => {
-        // Then open the URL in a new tab
-        chrome.tabs.create({ url: message.url });
-        sendResponse({ success: true });
-      })
-      .catch((error) => sendResponse({ success: false, error: error.message }));
+    console.log("Background received OPEN_BOOKMARK message:", message);
 
+    try {
+      // Track the click via analytics
+      analyticsService
+        .trackBookmarkClick(message.bookmarkId)
+        .then(() => {
+          console.log("Bookmark click tracked successfully");
+
+          // Open the URL in a new tab with error handling
+          try {
+            chrome.tabs.create({ url: message.url }, (tab) => {
+              if (chrome.runtime.lastError) {
+                console.error("Error creating tab:", chrome.runtime.lastError);
+                sendResponse({
+                  success: false,
+                  error: chrome.runtime.lastError.message,
+                });
+                return;
+              }
+
+              console.log("Tab created successfully:", tab);
+              sendResponse({ success: true, tabId: tab.id });
+            });
+          } catch (tabError) {
+            console.error("Exception creating tab:", tabError);
+            sendResponse({
+              success: false,
+              error: (tabError as Error).message,
+            });
+          }
+        })
+        .catch((error) => {
+          console.error("Error tracking bookmark click:", error);
+
+          // Still try to open the tab even if tracking fails
+          try {
+            chrome.tabs.create({ url: message.url });
+            sendResponse({
+              success: true,
+              warning: "Tab opened but click not tracked",
+            });
+          } catch (tabError) {
+            sendResponse({
+              success: false,
+              error: (tabError as Error).message,
+            });
+          }
+        });
+    } catch (error) {
+      console.error("Fatal error in OPEN_BOOKMARK handler:", error);
+      sendResponse({
+        success: false,
+        error: (error as Error).message,
+      });
+    }
+
+    // Return true to indicate we will call sendResponse asynchronously
     return true;
   }
 
@@ -77,12 +128,40 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
     return true;
   }
-});
 
-// Listen for tab updates to sync with Chrome bookmarks (optional feature)
-chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
-  // This could be used to detect when a user creates a bookmark in Chrome
-  // and then sync it to MarkZen if desired
-});
+  // New message type to get all bookmarks for search
+  if (message.type === "GET_ALL_BOOKMARKS") {
+    storageService
+      .getBookmarks()
+      .then((bookmarks) => {
+        sendResponse({ success: true, bookmarks });
+      })
+      .catch((error) => {
+        sendResponse({ success: false, error: (error as Error).message });
+      });
 
-console.log("MarkZen background service worker initialized");
+    return true;
+  }
+
+  // New message type to get all workspaces for search
+  if (message.type === "GET_ALL_WORKSPACES") {
+    storageService
+      .getWorkspaces()
+      .then((workspaces) => {
+        sendResponse({ success: true, workspaces });
+      })
+      .catch((error) => {
+        sendResponse({ success: false, error: (error as Error).message });
+      });
+
+    return true;
+  }
+
+  // Listen for tab updates to sync with Chrome bookmarks (optional feature)
+  chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
+    // This could be used to detect when a user creates a bookmark in Chrome
+    // and then sync it to MarkZen if desired
+  });
+
+  console.log("MarkZen background service worker initialized");
+});
