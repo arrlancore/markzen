@@ -74,6 +74,19 @@ const searchResults = document.getElementById(
   "search-results"
 ) as HTMLDivElement;
 
+const workspaceSelector = document.getElementById(
+  "workspace-selector"
+) as HTMLDivElement;
+
+const modalBookmarksList = document.getElementById(
+  "modal-bookmarks-list"
+) as HTMLDivElement;
+
+// Add/update these variables in your state
+let selectedWorkspaceId: string = "";
+let workspacesWithDefaults: Record<string, { name: string; count: number }> =
+  {};
+
 // State
 let bookmarks: Record<string, Bookmark> = {};
 let workspaces: Record<string, Workspace> = {};
@@ -107,6 +120,9 @@ async function initNewTab() {
   }
 }
 
+/**
+ * Update the existing loadWorkspaceInfo function to check for default opens in any workspace
+ */
 async function loadWorkspaceInfo(): Promise<void> {
   try {
     // Get workspace settings
@@ -124,20 +140,20 @@ async function loadWorkspaceInfo(): Promise<void> {
         activeWorkspaceName.textContent = activeWorkspace.name;
       }
 
-      // Get default opens
-      const defaultOpens = await storageService.getDefaultOpens(
-        activeWorkspaceId
-      );
-      const count = defaultOpens.length;
+      // Check all workspaces for default opens
+      let anyWorkspaceHasDefaults = false;
 
-      // Update count
-      if (defaultOpensCount) {
-        defaultOpensCount.textContent = count.toString();
+      for (const workspaceId in workspaces) {
+        const defaultOpens = await storageService.getDefaultOpens(workspaceId);
+        if (defaultOpens.length > 0) {
+          anyWorkspaceHasDefaults = true;
+          break; // We found at least one workspace with defaults, no need to check the rest
+        }
       }
 
-      // Show/hide open all container based on count
+      // Show/hide open all container based on whether any workspace has default opens
       if (openAllContainer) {
-        if (count > 0) {
+        if (anyWorkspaceHasDefaults) {
           openAllContainer.classList.remove("hidden");
         } else {
           openAllContainer.classList.add("hidden");
@@ -315,46 +331,212 @@ function showSettings() {
   });
 }
 
-/**
- * Handle opening all default bookmarks
- */
-function handleOpenAllDefaults(): void {
-  // Get count of default opens
-  const count = parseInt(defaultOpensCount.textContent || "0", 10);
+// Update the updateWorkspaceSelection function to track if bookmarks were already rendered
+let lastRenderedWorkspaceId = "";
 
-  if (count === 0) {
-    showNotification("No default opens to open", "warning");
+async function updateWorkspaceSelection(workspaceId: string): Promise<void> {
+  // Don't re-render if this is the same workspace that was just rendered
+  if (workspaceId === lastRenderedWorkspaceId) {
     return;
   }
 
-  // Update modal content
-  modalDefaultOpensCount.textContent = count.toString();
+  // Update selected workspace ID
+  selectedWorkspaceId = workspaceId;
 
-  // Set the workspace name in the modal
-  if (modalWorkspaceName) {
-    const activeWorkspaceName = document.getElementById(
-      "active-workspace-name"
-    );
-    if (activeWorkspaceName) {
-      modalWorkspaceName.textContent =
-        activeWorkspaceName.textContent || "Default";
-    }
+  // Update default opens count
+  updateDefaultOpensCount();
+
+  // Clear previous bookmarks
+  if (modalBookmarksList) {
+    modalBookmarksList.innerHTML = "";
   }
 
-  // Show modal
-  openDefaultsModal.classList.add("active");
+  // Render bookmarks for the selected workspace
+  await renderWorkspaceBookmarks(workspaceId);
+
+  // Update the last rendered workspace ID
+  lastRenderedWorkspaceId = workspaceId;
+}
+
+// Add this new function to render the bookmarks
+async function renderWorkspaceBookmarks(workspaceId: string): Promise<void> {
+  if (!modalBookmarksList) return;
+
+  // Clear previous bookmarks
+  modalBookmarksList.innerHTML = "";
+
+  try {
+    // Get default opens for the selected workspace
+    const defaultOpens = await storageService.getDefaultOpens(workspaceId);
+
+    if (defaultOpens.length === 0) {
+      modalBookmarksList.innerHTML = `<div class="modal-no-bookmarks">No default bookmarks in this workspace</div>`;
+      return;
+    }
+
+    // Create bookmark items
+    defaultOpens.forEach((bookmark) => {
+      const bookmarkItem = document.createElement("div");
+      bookmarkItem.className = "modal-bookmark-item";
+
+      // Create favicon
+      const favicon = document.createElement("img");
+      favicon.className = "modal-bookmark-favicon";
+      favicon.src = bookmark.favicon || "../assets/images/default-favicon.png";
+      favicon.alt = "";
+
+      // Create title
+      const title = document.createElement("div");
+      title.className = "modal-bookmark-title";
+      title.textContent = bookmark.title;
+      title.title = bookmark.title; // Add tooltip with full title
+
+      // Append elements to bookmark item
+      bookmarkItem.appendChild(favicon);
+      bookmarkItem.appendChild(title);
+
+      // Add to bookmarks list
+      modalBookmarksList.appendChild(bookmarkItem);
+    });
+  } catch (error) {
+    console.error("Error loading workspace bookmarks:", error);
+    modalBookmarksList.innerHTML = `<div class="modal-error">Error loading bookmarks</div>`;
+  }
 }
 
 /**
- * Open all default bookmarks in current window
+ * Handle opening all default bookmarks - Updated to show workspaces
+ */
+async function handleOpenAllDefaults(): Promise<void> {
+  try {
+    // Get workspace settings for the active workspace
+    const workspaceSettings = await storageService.getWorkspaceSettings();
+    selectedWorkspaceId =
+      workspaceSettings?.lastVisitedWorkspaceId || "default";
+
+    // Load all workspaces
+    workspaces = await storageService.getWorkspaces();
+
+    // Get default opens for each workspace and populate workspacesWithDefaults
+    workspacesWithDefaults = {};
+
+    for (const workspaceId in workspaces) {
+      const defaultOpens = await storageService.getDefaultOpens(workspaceId);
+      if (defaultOpens.length > 0) {
+        workspacesWithDefaults[workspaceId] = {
+          name: workspaces[workspaceId].name,
+          count: defaultOpens.length,
+        };
+      }
+    }
+
+    // If no workspaces have default opens, show notification and return
+    if (Object.keys(workspacesWithDefaults).length === 0) {
+      showNotification(
+        "No default bookmarks found in any workspace",
+        "warning"
+      );
+      return;
+    }
+
+    // Render workspace selector
+    renderWorkspaceSelector();
+
+    // Update default opens count for the selected workspace
+    updateDefaultOpensCount();
+
+    // Render the bookmarks for the initially selected workspace
+    // Clear previous bookmarks first to prevent duplicates
+    if (modalBookmarksList) {
+      modalBookmarksList.innerHTML = "";
+    }
+
+    await renderWorkspaceBookmarks(selectedWorkspaceId);
+
+    // Show modal
+    openDefaultsModal.classList.add("active");
+  } catch (error) {
+    console.error("Error preparing default opens:", error);
+    showNotification(
+      `Error loading workspaces: ${(error as Error).message}`,
+      "error"
+    );
+  }
+}
+
+/**
+ * Render workspace selector in the modal
+ */
+function renderWorkspaceSelector(): void {
+  // Clear previous content
+  workspaceSelector.innerHTML = "";
+
+  // Create a workspace option for each workspace with default opens
+  Object.entries(workspacesWithDefaults).forEach(
+    ([workspaceId, workspaceInfo]) => {
+      const workspaceOption = document.createElement("div");
+      workspaceOption.className = "workspace-option";
+      workspaceOption.dataset.id = workspaceId;
+
+      // Add selected class if this is the active workspace
+      if (workspaceId === selectedWorkspaceId) {
+        workspaceOption.classList.add("selected");
+      }
+
+      // Create name element
+      const nameDiv = document.createElement("div");
+      nameDiv.className = "workspace-name";
+      nameDiv.textContent = workspaceInfo.name;
+
+      // Create count element
+      const countDiv = document.createElement("div");
+      countDiv.className = "workspace-count";
+      countDiv.textContent = workspaceInfo.count.toString();
+
+      // Append elements to workspace option
+      workspaceOption.appendChild(nameDiv);
+      workspaceOption.appendChild(countDiv);
+
+      // Add click event
+      workspaceOption.addEventListener("click", async () => {
+        // Remove selected class from all options
+        document.querySelectorAll(".workspace-option").forEach((option) => {
+          option.classList.remove("selected");
+        });
+
+        // Add selected class to this option
+        workspaceOption.classList.add("selected");
+
+        // Update selected workspace ID
+        // Get the workspace ID
+        const clickedWorkspaceId = workspaceOption.dataset.id;
+        if (clickedWorkspaceId) {
+          // Update workspace selection
+          await updateWorkspaceSelection(clickedWorkspaceId);
+        }
+      });
+
+      workspaceSelector.appendChild(workspaceOption);
+    }
+  );
+}
+
+/**
+ * Update default opens count in the modal
+ */
+function updateDefaultOpensCount(): void {
+  if (modalDefaultOpensCount) {
+    const count = workspacesWithDefaults[selectedWorkspaceId]?.count || 0;
+    modalDefaultOpensCount.textContent = count.toString();
+  }
+}
+
+/**
+ * Open all default bookmarks in current window - Updated to use selected workspace
  */
 async function openDefaultsInCurrentWindow() {
   try {
-    const workspaceSettings = await storageService.getWorkspaceSettings();
-    const activeWorkspaceId =
-      workspaceSettings?.lastVisitedWorkspaceId || "default";
-
-    await storageService.openDefaultBookmarks(activeWorkspaceId, false);
+    await storageService.openDefaultBookmarks(selectedWorkspaceId, false);
     openDefaultsModal.classList.remove("active");
     showNotification("Opening default bookmarks", "success");
   } catch (error) {
@@ -367,15 +549,11 @@ async function openDefaultsInCurrentWindow() {
 }
 
 /**
- * Open all default bookmarks in new window
+ * Open all default bookmarks in new window - Updated to use selected workspace
  */
 async function openDefaultsInNewWindow() {
   try {
-    const workspaceSettings = await storageService.getWorkspaceSettings();
-    const activeWorkspaceId =
-      workspaceSettings?.lastVisitedWorkspaceId || "default";
-
-    await storageService.openDefaultBookmarks(activeWorkspaceId, true);
+    await storageService.openDefaultBookmarks(selectedWorkspaceId, true);
     openDefaultsModal.classList.remove("active");
     showNotification("Opening default bookmarks in new window", "success");
   } catch (error) {

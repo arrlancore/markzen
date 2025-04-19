@@ -95,8 +95,7 @@
             <line x1="3" y1="12" x2="21" y2="12"></line>
             <polyline points="15 6 21 12 15 18"></polyline>
           </svg>
-          <span>Open All Default Bookmarks</span>
-          <span id="default-opens-count" class="default-opens-count">0</span>
+          <span>Open Default Bookmarks</span>
         </button>
       </div>
 
@@ -180,10 +179,20 @@
           </button>
         </div>
         <div class="modal-body">
-          <p id="open-defaults-message">
-            You are about to open <span id="modal-default-opens-count">0</span> bookmarks from 
-            workspace "<span id="modal-workspace-name">Default</span>". How would you like to open them?
-          </p>
+          <p>Select a workspace to open its default bookmarks:</p>
+          
+          <!-- Workspace selector -->
+          <div id="workspace-selector" class="workspace-selector">
+            <!-- Workspaces will be populated here dynamically -->
+          </div>
+          
+          <div id="workspace-info" class="workspace-info">
+            <p>You will open <span id="modal-default-opens-count">0</span> bookmarks from the selected workspace.</p>
+
+            <div id="modal-bookmarks-list" class="modal-bookmarks-list">
+              <!-- Bookmarks will be populated here dynamically -->
+            </div>
+          </div>
         </div>
         <div class="modal-footer">
           <button
