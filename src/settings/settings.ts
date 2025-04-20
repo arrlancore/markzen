@@ -71,7 +71,6 @@ async function initSettings(): Promise<void> {
 
   try {
     console.log("Initializing settings page");
-    const type = await storageService.getStorageType();
 
     // Load settings
     currentSettings = await storageService.getSettings();

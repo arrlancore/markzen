@@ -1,0 +1,185 @@
+/* markzen-design-tokens.css
+ * Refined design tokens for MarkZen extension with elegant glass morphism
+ */
+
+ :root {
+  /* Core Colors */
+  --color-primary: #3b82f6;
+  --color-primary-light: #60a5fa;
+  --color-primary-dark: #2563eb;
+  --color-background: #e6eef9;
+  --color-text: #2d3748;
+  --color-text-secondary: #4a5568;
+  --color-success: #10b981;
+  --color-error: #ef4444;
+  --color-warning: #f59e0b;
+  
+  /* UI Element Colors - refined glass morphism */
+  --color-glass: rgba(255, 255, 255, 0.12);
+  --color-glass-hover: rgba(255, 255, 255, 0.18);
+  --color-glass-active: rgba(255, 255, 255, 0.08);
+  
+  /* Dark UI Elements */
+  --color-dark-glass: rgba(23, 25, 35, 0.8);
+  --color-dark-glass-lighter: rgba(255, 255, 255, 0.08);
+  --color-dark-glass-hover: rgba(255, 255, 255, 0.12);
+  
+  /* Primary UI color variants */
+  --color-primary-glass: rgba(59, 130, 246, 0.3);
+  --color-primary-glass-hover: rgba(59, 130, 246, 0.5);
+  
+  /* Shadow colors */
+  --shadow-standard: rgba(0, 0, 0, 0.15);
+  --shadow-light: rgba(0, 0, 0, 0.1);
+  --shadow-heavy: rgba(0, 0, 0, 0.25);
+  --shadow-primary: rgba(59, 130, 246, 0.2);
+  
+  /* Border colors */
+  --border-light: rgba(255, 255, 255, 0.12);
+  --border-lighter: rgba(255, 255, 255, 0.06);
+  --border-primary: rgba(59, 130, 246, 0.6);
+  --border-dark: rgba(255, 255, 255, 0.08);
+  --border-dark-light: rgba(255, 255, 255, 0.05);
+  
+  /* Text shadows */
+  --text-shadow-subtle: 0 1px 3px rgba(0, 0, 0, 0.3);
+  --text-shadow-medium: 0 2px 8px rgba(0, 0, 0, 0.3);
+  --text-shadow-strong: 0 4px 12px rgba(0, 0, 0, 0.3);
+  
+  /* Box shadows */
+  --box-shadow-subtle: 0 4px 6px rgba(0, 0, 0, 0.1);
+  --box-shadow-medium: 0 10px 20px rgba(0, 0, 0, 0.15);
+  --box-shadow-strong: 0 25px 50px rgba(0, 0, 0, 0.25);
+  --box-shadow-primary: 0 4px 12px rgba(59, 130, 246, 0.2);
+  
+  /* Blur effects */
+  --blur-subtle: blur(8px);
+  --blur-medium: blur(10px);
+  --blur-strong: blur(16px);
+  
+  /* Border radius */
+  --border-radius-sm: 8px;
+  --border-radius-md: 12px;
+  --border-radius-lg: 16px;
+  --border-radius-xl: 20px;
+  --border-radius-full: 9999px;
+  
+  /* Spacing */
+  --space-xs: 4px;
+  --space-sm: 8px;
+  --space-md: 16px;
+  --space-lg: 24px;
+  --space-xl: 32px;
+  --space-2xl: 48px;
+  --space-3xl: 64px;
+  
+  /* Typography */
+  --font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-size-xs: 0.75rem;   /* 12px */
+  --font-size-sm: 0.875rem;  /* 14px */
+  --font-size-md: 1rem;      /* 16px */
+  --font-size-lg: 1.25rem;   /* 20px */
+  --font-size-xl: 1.5rem;    /* 24px */
+  --font-size-2xl: 1.8rem;   /* 28.8px */
+  --font-size-3xl: 2.5rem;   /* 40px */
+  --font-size-4xl: 3.75rem;  /* 60px */
+  --font-size-5xl: 5rem;     /* 80px */
+  --font-size-6xl: 9rem;     /* 144px for clock */
+  
+  --font-weight-light: 300;
+  --font-weight-regular: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+  
+  /* Transitions */
+  --transition-fast: all 0.2s ease;
+  --transition-normal: all 0.3s ease;
+  --transition-smooth: all 0.3s cubic-bezier(0.23, 1, 0.32, 1);
+  
+  /* Z-index layers */
+  --z-index-base: 1;
+  --z-index-above: 10;
+  --z-index-modal: 100;
+  --z-index-notification: 1000;
+}
+
+/* Dark Theme Variables - adjusted for improved dark mode experience */
+[data-theme="dark"] {
+  --color-background: #1e2235;
+  --color-text: #e2e8f0;
+  --color-text-secondary: #a0aec0;
+  
+  /* We don't need to modify most glass colors as they work well in dark mode */
+  /* But we can refine specific elements if needed */
+  --color-dark-glass: rgba(13, 15, 25, 0.85); 
+}
+
+/* Utility Classes for Glass Morphism */
+.glass-panel {
+  background-color: var(--color-glass);
+  backdrop-filter: var(--blur-medium);
+  border-radius: var(--border-radius-lg);
+  box-shadow: var(--box-shadow-medium);
+  border: 1px solid var(--border-light);
+}
+
+.glass-dark-panel {
+  background-color: var(--color-dark-glass);
+  backdrop-filter: var(--blur-strong);
+  border-radius: var(--border-radius-lg);
+  box-shadow: var(--box-shadow-strong);
+  border: 1px solid var(--border-dark-light);
+}
+
+.glass-button {
+  background-color: var(--color-glass);
+  backdrop-filter: var(--blur-medium);
+  color: white;
+  border: 1px solid var(--border-light);
+  border-radius: var(--border-radius-full);
+  box-shadow: var(--box-shadow-subtle);
+  transition: var(--transition-smooth);
+  cursor: pointer;
+}
+
+.glass-button:hover {
+  background-color: var(--color-glass-hover);
+  transform: translateY(-3px);
+  box-shadow: var(--box-shadow-medium);
+  border: 1px solid var(--border-light);
+}
+
+.glass-button:active {
+  transform: translateY(-1px);
+  box-shadow: var(--box-shadow-subtle);
+}
+
+/* Animations */
+.fade-in {
+  animation: fadeIn 0.3s ease-in-out forwards;
+}
+
+@keyframes fadeIn {
+  from { 
+    opacity: 0; 
+    transform: translateY(10px);
+  }
+  to { 
+    opacity: 1; 
+    transform: translateY(0);
+  }
+}
+
+/* Accessibility */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}

@@ -132,7 +132,8 @@ export class StorageService implements IStorageService {
   private activeStorage: chrome.storage.StorageArea = chrome.storage.local;
 
   async initialize(): Promise<void> {
-    let settings = await this.getSettings();
+    let settings = (await this.getSettings()) ?? {};
+
     if (!settings.storageType) {
       // Default to local storage if storage type is not set
       this.set("settings", {
@@ -142,7 +143,6 @@ export class StorageService implements IStorageService {
 
       settings = await this.getSettings();
     }
-    this.setStorageType(settings.storageType);
   }
   setStorageType(type: "local" | "sync"): void {
     this.activeStorage =
@@ -242,6 +242,9 @@ export class StorageService implements IStorageService {
             if (syncResult.settings) {
               resolve(syncResult.settings as AppSettings);
             } else {
+              console.log("Using default settings", defaultSettings);
+              // If no settings found in either storage, return default settings
+              this.set("settings", defaultSettings);
               resolve(defaultSettings);
             }
           });
@@ -337,6 +340,9 @@ export class StorageService implements IStorageService {
 
   // Get all workspaces
   async getWorkspaces(): Promise<Record<string, Workspace>> {
+    const storageType = await this.getStorageType();
+    this.setStorageType(storageType);
+
     const workspaces = await this.get<Record<string, Workspace>>("workspaces");
     return workspaces || {};
   }
@@ -513,6 +519,8 @@ export class StorageService implements IStorageService {
           defaultWorkspaceId: "default",
           lastVisitedWorkspaceId: "default",
         });
+
+        await this.set("settings", defaultSettings);
 
         console.log("Default data created successfully");
       }

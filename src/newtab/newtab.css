@@ -390,6 +390,7 @@
    background-color: rgba(255, 255, 255, 0.2);
    padding: 2px var(--space-xs);
    border-radius: 10px;
+   text-align: center;
  }
  
  .workspace-info {

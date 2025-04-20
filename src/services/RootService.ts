@@ -26,6 +26,7 @@ export class RootService {
 
     try {
       await this.storage.initialize();
+      await this.storage.initializeDefaultData();
       this.isInitialized = true;
       console.log("RootService initialized successfully");
     } catch (error) {
