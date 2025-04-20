@@ -3,7 +3,8 @@
   "name": "MarkZen",
   "version": "1.0.0",
   "description": "Kanban-style bookmark manager with enhanced new tab experience",
-  "permissions": ["storage", "tabs", "bookmarks"],
+  "permissions": ["storage", "tabs", "bookmarks", "scripting"],
+  "host_permissions": ["<all_urls>"],
   "action": {
     "default_popup": "popup.html",
     "default_icon": {

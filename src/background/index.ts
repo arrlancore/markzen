@@ -34,6 +34,35 @@ chrome.runtime.onInstalled.addListener(async (details) => {
   }
 });
 
+// Add this function before the message listener
+
+async function getPageMetadata(
+  tabId: number
+): Promise<{ description: string; keywords: string[] }> {
+  const result = await chrome.scripting.executeScript({
+    target: { tabId },
+    func: () => {
+      const metaDescription =
+        document
+          .querySelector('meta[name="description"]')
+          ?.getAttribute("content") || "";
+      const metaKeywords =
+        document
+          .querySelector('meta[name="keywords"]')
+          ?.getAttribute("content") || "";
+      return {
+        description: metaDescription,
+        keywords: metaKeywords
+          .split(",")
+          .map((tag) => tag.trim())
+          .filter((tag) => tag !== ""),
+      };
+    },
+  });
+
+  return result[0].result!;
+}
+
 // Message handling
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (!rootService.isReady()) {
@@ -94,12 +123,17 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           return;
         }
 
+        // Get metadata for the current page
+        const metadata = await getPageMetadata(tab.id!);
+
         // Create new bookmark
         const newBookmark = {
           id: Date.now().toString(),
           title: message.customTitle || tab.title || "Untitled",
           url: tab.url || "",
           favicon: tab.favIconUrl || "",
+          description: metadata.description,
+          tags: metadata.keywords,
           createdAt: new Date().toISOString(),
           columnId: message.columnId,
           workspaceId: message.workspaceId,
