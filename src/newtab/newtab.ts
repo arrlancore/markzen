@@ -82,6 +82,14 @@ const modalBookmarksList = document.getElementById(
   "modal-bookmarks-list"
 ) as HTMLDivElement;
 
+// Note button
+const noteBtn = document.getElementById("note-btn") as HTMLButtonElement;
+if (noteBtn) {
+  noteBtn.addEventListener("click", () => {
+    openOrFocusTab("note.html");
+  });
+}
+
 // Add/update these variables in your state
 let selectedWorkspaceId: string = "";
 let workspacesWithDefaults: Record<string, { name: string; count: number }> =

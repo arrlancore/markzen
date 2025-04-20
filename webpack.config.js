@@ -10,7 +10,8 @@ module.exports = {
     newtab: './src/newtab/newtab.ts',
     background: './src/background/index.ts',
     kanban: './src/kanban/kanban.ts',
-    settings: './src/settings/settings.ts'
+    settings: './src/settings/settings.ts',
+    note: './src/note/note.ts'
   },
   output: {
     path: path.resolve(__dirname, 'dist'),
@@ -78,6 +79,11 @@ module.exports = {
       template: './src/settings/settings.html',
       filename: 'settings.html',
       chunks: ['settings']
+    }),
+    new HtmlWebpackPlugin({
+      template: './src/note/note.html',
+      filename: 'note.html',
+      chunks: ['note']
     }),
     new MiniCssExtractPlugin({
       filename: '[name].css'

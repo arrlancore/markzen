@@ -54,10 +54,16 @@ markzen/
 │   │   ├── settings.ts       # Settings functionality
 │   │   ├── settings.html     # Settings HTML
 │   │   └── settings.css      # Settings styles
+│   ├── note/                 # Quick note page
+│   │   ├── note.ts           # Note functionality
+│   │   ├── note.html         # Note HTML
+│   │   └── note.css          # Note styles
 │   ├── utils/                # Utility functions
 │   │   ├── storage.ts        # Storage management
-│   │   └── analytics.ts      # Usage analytics
-│   │   └── theme-service.ts  # Service for managing theme
+│   │   ├── analytics.ts      # Usage analytics
+│   │   ├── theme-service.ts  # Theme service
+│   │   ├── note-service.ts   # Note service [NEW]
+│   │   └── markdown-parser.ts # Markdown parser [NEW]
 │   └── models/               # Data models
 │       ├── bookmark.ts       # Bookmark model
 │       └── workspace.ts      # Workspace model

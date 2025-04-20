@@ -26,6 +26,30 @@
             <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
           </svg>
         </button>
+
+        <button id="note-btn" class="action-button" title="Quick Note">
+          <svg
+            width="18"
+            height="18"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <path
+              d="M12 2H4a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-8"
+            ></path>
+            <path d="M18 2v8h8"></path>
+            <path d="M18 2l8 8"></path>
+            <path d="M2 6h4"></path>
+            <path d="M2 10h4"></path>
+            <path d="M2 14h4"></path>
+            <path d="M2 18h8"></path>
+          </svg>
+        </button>
+
         <button
           id="show-kanban-btn"
           class="action-button"
@@ -180,14 +204,18 @@
         </div>
         <div class="modal-body">
           <p>Select a workspace to open its default bookmarks:</p>
-          
+
           <!-- Workspace selector -->
           <div id="workspace-selector" class="workspace-selector">
             <!-- Workspaces will be populated here dynamically -->
           </div>
-          
+
           <div id="workspace-info" class="workspace-info">
-            <p>You will open <span id="modal-default-opens-count">0</span> bookmarks from the selected workspace.</p>
+            <p>
+              You will open
+              <span id="modal-default-opens-count">0</span> bookmarks from the
+              selected workspace.
+            </p>
 
             <div id="modal-bookmarks-list" class="modal-bookmarks-list">
               <!-- Bookmarks will be populated here dynamically -->

@@ -1,0 +1,393 @@
+/* Reset and base styles */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  font-family: 'Inter', system-ui, sans-serif;
+}
+
+:root {
+  --color-primary: #3b82f6;
+  --color-primary-hover: #2563eb;
+  --color-secondary: #64748b;
+  --color-secondary-hover: #475569;
+  --color-background: #ffffff;
+  --color-background-subtle: #f9fafb;
+  --color-border: #e2e8f0;
+  --color-text: #1e293b;
+  --color-text-light: #64748b;
+  --color-success: #10b981;
+  --color-error: #ef4444;
+  --color-warning: #f59e0b;
+  --border-radius: 8px;
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  --transition: all 0.2s ease;
+}
+
+html, body {
+  height: 100%;
+  width: 100%;
+}
+
+body {
+  background-color: var(--color-background-subtle);
+  color: var(--color-text);
+}
+
+/* App container */
+.app-container {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+}
+
+/* Header styles */
+.app-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 24px;
+  background-color: var(--color-background);
+  border-bottom: 1px solid var(--color-border);
+  box-shadow: var(--shadow-sm);
+}
+
+.logo {
+  display: flex;
+  align-items: center;
+}
+
+.logo-img {
+  width: 24px;
+  height: 24px;
+  margin-right: 12px;
+}
+
+.logo-text {
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.action-button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  border-radius: var(--border-radius);
+  background-color: var(--color-background);
+  border: 1px solid var(--color-border);
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--color-text);
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.action-button:hover {
+  background-color: var(--color-background-subtle);
+  box-shadow: var(--shadow-sm);
+}
+
+/* Note container */
+.note-container {
+  flex: 1;
+  display: flex;
+  overflow: hidden;
+  position: relative;
+}
+
+.editor-section, .preview-section {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px;
+  background-color: var(--color-background);
+}
+
+.editor-section.hidden, .preview-section.hidden {
+  display: none;
+}
+
+.note-textarea {
+  width: 100%;
+  height: 100%;
+  background-color: transparent;
+  border: none;
+  color: var(--color-text);
+  font-size: 16px;
+  line-height: 1.6;
+  resize: none;
+  outline: none;
+  font-family: 'Menlo', 'Monaco', monospace;
+}
+
+.note-preview {
+  font-size: 16px;
+  line-height: 1.6;
+  color: var(--color-text);
+}
+
+.note-preview h1 {
+  font-size: 1.8em;
+  margin-bottom: 16px;
+  border-bottom: 1px solid var(--color-border);
+  padding-bottom: 8px;
+}
+
+.note-preview h2 {
+  font-size: 1.5em;
+  margin-bottom: 14px;
+  border-bottom: 1px solid var(--color-border);
+  padding-bottom: 6px;
+}
+
+.note-preview h3 {
+  font-size: 1.3em;
+  margin-bottom: 12px;
+}
+
+.note-preview p {
+  margin-bottom: 16px;
+}
+
+.note-preview ul, .note-preview ol {
+  margin-bottom: 16px;
+  margin-left: 20px;
+}
+
+.note-preview li {
+  margin-bottom: 4px;
+}
+
+.note-preview code {
+  font-family: monospace;
+  padding: 2px 4px;
+  background-color: var(--color-background-subtle);
+  border-radius: 4px;
+}
+
+.note-preview pre {
+  background-color: var(--color-background-subtle);
+  padding: 12px;
+  border-radius: 8px;
+  overflow-x: auto;
+  margin-bottom: 16px;
+}
+
+.note-preview a {
+  color: var(--color-primary);
+  text-decoration: none;
+}
+
+.note-preview a:hover {
+  text-decoration: underline;
+}
+
+/* Footer styles */
+.app-footer {
+  padding: 12px 24px;
+  border-top: 1px solid var(--color-border);
+  background-color: var(--color-background);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.note-info {
+  font-size: 14px;
+  color: var(--color-text-light);
+}
+
+/* Add/update these styles in note.css */
+.note-save-status {
+  margin-left: 10px;
+  padding: 2px 8px;
+  background-color: var(--color-background-subtle);
+  border-radius: 12px;
+  font-size: 12px;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.note-save-status.visible {
+  opacity: 1;
+}
+
+.note-save-status.success {
+  background-color: var(--color-success);
+  color: white;
+}
+
+.note-save-status.error {
+  background-color: var(--color-error);
+  color: white;
+}
+
+/* Style for help link in footer */
+.help-link {
+  background: none;
+  border: none;
+  color: var(--color-text-light);
+  font-size: 12px;
+  cursor: pointer;
+  text-decoration: underline;
+  transition: var(--transition);
+}
+
+.help-link:hover {
+  color: var(--color-text);
+}
+
+/* Markdown help styles */
+.markdown-help {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 100;
+}
+
+.markdown-help.hidden {
+  display: none;
+}
+
+.markdown-help-container {
+  background-color: var(--color-background);
+  border-radius: var(--border-radius);
+  box-shadow: var(--shadow);
+  width: 500px;
+  max-width: 90%;
+  padding: 24px;
+}
+
+.markdown-help-container h3 {
+  margin-bottom: 16px;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.markdown-help-content {
+  max-height: 300px;
+  overflow-y: auto;
+  margin-bottom: 16px;
+}
+
+.markdown-help-content table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.markdown-help-content td {
+  padding: 10px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.markdown-help-content code {
+  background-color: var(--color-background-subtle);
+  padding: 2px 4px;
+  border-radius: 4px;
+  font-family: monospace;
+}
+
+.close-markdown-help {
+  display: block;
+  margin: 0 auto;
+  padding: 8px 16px;
+  background-color: var(--color-background);
+  border: 1px solid var(--color-border);
+  border-radius: var(--border-radius);
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--color-text);
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.close-markdown-help:hover {
+  background-color: var(--color-background-subtle);
+}
+
+/* Notification styles */
+.notification {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  background-color: var(--color-primary);
+  color: white;
+  padding: 12px 16px;
+  border-radius: var(--border-radius);
+  box-shadow: var(--shadow);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  z-index: 1000;
+  transition: transform 0.3s ease, opacity 0.3s ease;
+  max-width: 400px;
+}
+
+.notification.success {
+  background-color: var(--color-success);
+}
+
+.notification.error {
+  background-color: var(--color-error);
+}
+
+.notification.warning {
+  background-color: var(--color-warning);
+}
+
+.notification.hidden {
+  transform: translateY(100%);
+  opacity: 0;
+}
+
+.notification-message {
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.notification-close {
+  background: transparent;
+  border: none;
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+/* Dark theme support */
+[data-theme="dark"] {
+  --color-background: #1e1e2e;
+  --color-background-subtle: #2a2a3c;
+  --color-border: #383850;
+  --color-text: #e2e8f0;
+  --color-text-light: #94a3b8;
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.2);
+  --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -1px rgba(0, 0, 0, 0.15);
+}
+
+@media (max-width: 768px) {
+  .app-header {
+    padding: 12px 16px;
+  }
+  
+  .note-textarea, .note-preview {
+    font-size: 14px;
+  }
+}
