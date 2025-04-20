@@ -125,8 +125,6 @@ async function switchWorkspace(workspaceId: string) {
         item.classList.remove("active");
       }
     });
-
-    showNotification("Workspace switched successfully", "success");
   } catch (error) {
     showNotification(
       `Error switching workspace: ${(error as Error).message}`,
@@ -289,12 +287,6 @@ function showBookmarkModal(
         columnOptions.forEach((opt) => opt.classList.remove("selected"));
         // Add selected class to clicked option
         option.classList.add("selected");
-
-        // Optional: Show visual feedback
-        showNotification(
-          `Selected column: ${option.textContent?.trim()}`,
-          "success"
-        );
       });
     });
   }
