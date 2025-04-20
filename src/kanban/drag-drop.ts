@@ -468,66 +468,94 @@ async function handleDropOnDefaultOpens(
 
     // If dragging from a column to default opens (adding new default open)
     if (sourceDragTarget === "column" || sourceDragTarget === "") {
-      // Add to default opens
-      await storageService.addDefaultOpen(workspaceId, bookmarkId);
-      showNotification("Added to default opens", "success");
-    }
-    // If reordering within default opens
-    else if (sourceDragTarget === "default-opens") {
-      const workspace = await storageService.getWorkspace(workspaceId);
-      if (!workspace || !workspace.defaultOpenIds) {
-        throw new Error("Workspace or default opens not found");
-      }
-
-      // Determine new order
-      let newOrder = [...workspace.defaultOpenIds];
-
-      // Get all items in default opens list
-      const defaultOpensList = defaultOpensBody.querySelector(
-        ".default-opens-list"
-      );
-      if (!defaultOpensList) {
-        throw new Error("Default opens list element not found");
-      }
-
-      const items = Array.from(
-        defaultOpensList.querySelectorAll(".default-open-item:not(.dragging)")
-      );
-
-      // Remove the dragged bookmark from current position
-      newOrder = newOrder.filter((id) => id !== bookmarkId);
-
-      // Find new position based on cursor X position
-      let newPosition = newOrder.length; // Default to end
-
-      for (let i = 0; i < items.length; i++) {
-        const rect = items[i].getBoundingClientRect();
-        const itemId = (items[i] as HTMLElement).dataset.id;
-
-        if (e.clientX < rect.left + rect.width / 2) {
-          // Find the position in newOrder array
-          newPosition = newOrder.findIndex((id) => id === itemId);
-          if (newPosition === -1) newPosition = i;
-          break;
+      try {
+        // Get workspace directly
+        const workspace = await storageService.getWorkspace(workspaceId);
+        if (!workspace) {
+          throw new Error("Workspace not found");
         }
+
+        // Initialize defaultOpenIds if needed
+        workspace.defaultOpenIds = workspace.defaultOpenIds || [];
+
+        // Check if already exists
+        if (workspace.defaultOpenIds.includes(bookmarkId)) {
+          showNotification("Already in default opens");
+          return;
+        }
+
+        // Check limit
+        if (workspace.defaultOpenIds.length >= 10) {
+          showNotification(
+            "Maximum number of default opens reached (10)",
+            "error"
+          );
+          return;
+        }
+
+        // Add to default opens
+        workspace.defaultOpenIds.push(bookmarkId);
+        workspace.updatedAt = new Date().toISOString();
+
+        // Save workspace
+        await storageService.saveWorkspace(workspace);
+        showNotification("Added to default opens", "success");
+      } catch (error) {
+        showNotification(`Error: ${(error as Error).message}`, "error");
+        return;
       }
-
-      // Insert at new position
-      newOrder.splice(newPosition, 0, bookmarkId);
-
-      // Update default opens order
-      await storageService.reorderDefaultOpens(workspaceId, newOrder);
     }
+
+    // Rest of the existing code for reordering...
+    const workspace = await storageService.getWorkspace(workspaceId);
+    if (!workspace || !workspace.defaultOpenIds) {
+      throw new Error("Workspace or default opens not found");
+    }
+
+    // Determine new order
+    let newOrder = [...workspace.defaultOpenIds];
+
+    // Get all items in default opens list
+    const defaultOpensList = defaultOpensBody.querySelector(
+      ".default-opens-list"
+    );
+    if (!defaultOpensList) {
+      throw new Error("Default opens list element not found");
+    }
+
+    const items = Array.from(
+      defaultOpensList.querySelectorAll(".default-open-item:not(.dragging)")
+    );
+
+    // Remove the dragged bookmark from current position
+    newOrder = newOrder.filter((id) => id !== bookmarkId);
+
+    // Find new position based on cursor X position
+    let newPosition = newOrder.length; // Default to end
+
+    for (let i = 0; i < items.length; i++) {
+      const rect = items[i].getBoundingClientRect();
+      const itemId = (items[i] as HTMLElement).dataset.id;
+
+      if (e.clientX < rect.left + rect.width / 2) {
+        // Find the position in newOrder array
+        newPosition = newOrder.findIndex((id) => id === itemId);
+        if (newPosition === -1) newPosition = i;
+        break;
+      }
+    }
+
+    // Insert at new position
+    newOrder.splice(newPosition, 0, bookmarkId);
+
+    // Update default opens order
+    await storageService.reorderDefaultOpens(workspaceId, newOrder);
 
     // Refresh UI to reflect changes
     const refreshEvent = new CustomEvent("kanban:refresh");
     document.dispatchEvent(refreshEvent);
   } catch (error) {
-    if ((error as Error).message.includes("Maximum number")) {
-      showNotification("Maximum number of default opens reached (10)", "error");
-    } else {
-      throw error;
-    }
+    showNotification(`Error: ${(error as Error).message}`, "error");
   }
 }
 

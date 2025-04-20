@@ -1,15 +1,15 @@
 import { Bookmark } from "../models/bookmark";
-import storageService from "./storage";
+import { StorageService } from "./storage";
 
-class AnalyticsService {
-  // Track when a bookmark is clicked
+export class AnalyticsService {
+  constructor(private storageService: StorageService) {}
+
   async trackBookmarkClick(bookmarkId: string): Promise<void> {
-    await storageService.trackBookmarkClick(bookmarkId);
+    await this.storageService.trackBookmarkClick(bookmarkId);
 
-    // Also update the bookmark's lastVisited time
-    const bookmark = await storageService.getBookmark(bookmarkId);
+    const bookmark = await this.storageService.getBookmark(bookmarkId);
     if (bookmark) {
-      await storageService.saveBookmark({
+      await this.storageService.saveBookmark({
         ...bookmark,
         lastVisited: new Date().toISOString(),
       });
@@ -20,7 +20,9 @@ class AnalyticsService {
   async getMostUsedBookmarks(
     limit: number = 10
   ): Promise<{ bookmark: Bookmark; clicks: number }[]> {
-    const bookmarksWithStats = await storageService.getMostUsedBookmarks(limit);
+    const bookmarksWithStats = await this.storageService.getMostUsedBookmarks(
+      limit
+    );
 
     return bookmarksWithStats.map((item) => ({
       bookmark: item.bookmark,
@@ -30,7 +32,7 @@ class AnalyticsService {
 
   // Get recently used bookmarks
   async getRecentlyUsedBookmarks(limit: number = 10): Promise<Bookmark[]> {
-    const bookmarks = await storageService.getBookmarks();
+    const bookmarks = await this.storageService.getBookmarks();
 
     return Object.values(bookmarks)
       .filter((bookmark) => bookmark.lastVisited) // Only include bookmarks that have been visited
@@ -44,8 +46,8 @@ class AnalyticsService {
 
   // Get the distribution of bookmarks across workspaces
   async getBookmarkDistribution(): Promise<Record<string, number>> {
-    const bookmarks = await storageService.getBookmarks();
-    const workspaces = await storageService.getWorkspaces();
+    const bookmarks = await this.storageService.getBookmarks();
+    const workspaces = await this.storageService.getWorkspaces();
 
     const distribution: Record<string, number> = {};
 
@@ -66,7 +68,7 @@ class AnalyticsService {
 
   // Get usage patterns over time (simplified)
   async getUsageOverTime(days: number = 7): Promise<Record<string, number>> {
-    const stats = await storageService.getBookmarkStats();
+    const stats = await this.storageService.getBookmarkStats();
     const now = new Date();
     const result: Record<string, number> = {};
 
@@ -90,5 +92,5 @@ class AnalyticsService {
   }
 }
 
-export const analyticsService = new AnalyticsService();
+export const analyticsService = new AnalyticsService(new StorageService());
 export default analyticsService;

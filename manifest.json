@@ -21,7 +21,6 @@
     "newtab": "newtab.html"
   },
   "background": {
-    "service_worker": "background.js",
-    "type": "module"
+    "service_worker": "background.js"
   }
 }

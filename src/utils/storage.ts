@@ -1,5 +1,8 @@
+// src/utils/storage.ts
 import { Bookmark, Column, BookmarkStats } from "../models/bookmark";
 import { Workspace, WorkspaceSettings } from "../models/workspace";
+
+console.log("Storage service loaded");
 
 // Define keys for storage to use as type-safe indices
 export type StorageKey =
@@ -18,6 +21,7 @@ export interface StorageData {
   workspaceSettings: WorkspaceSettings;
   settings: AppSettings;
 }
+
 export interface AppSettings {
   theme: "light" | "dark" | "system";
   storageType: "local" | "sync";
@@ -52,78 +56,63 @@ const defaultWorkspaceSettings: WorkspaceSettings = {
   lastVisitedWorkspaceId: "default",
 };
 
-class StorageService {
-  private activeStorage: chrome.storage.StorageArea = chrome.storage.local;
+interface IStorageService {
+  // Initialization and configuration
+  initialize(): Promise<void>;
+  setStorageType(type: "local" | "sync"): void;
+  getStorageType(): Promise<"local" | "sync">;
+  migrateStorage(newType: "local" | "sync"): Promise<void>;
 
-  // Initialize the storage service with the correct storage type
-  async initialize(): Promise<void> {
-    let settings = await this.getSettings();
-    if (!settings.storageType) {
-      // Default to local storage if storage type is not set
-      this.set("settings", {
-        ...settings,
-        storageType: "local",
-      } as AppSettings);
+  // Settings management
+  getSettings(): Promise<AppSettings>;
+  updateSettings(settings: Partial<AppSettings>): Promise<AppSettings>;
 
-      settings = await this.getSettings();
-    }
-    this.setStorageType(settings.storageType);
-  }
+  // Bookmark operations
+  getBookmarks(): Promise<Record<string, Bookmark>>;
+  getBookmark(id: string): Promise<Bookmark | undefined>;
+  saveBookmark(bookmark: Bookmark): Promise<void>;
+  deleteBookmark(id: string): Promise<void>;
 
-  // Set the active storage type
-  setStorageType(type: "local" | "sync"): void {
-    this.activeStorage =
-      type === "local" ? chrome.storage.local : chrome.storage.sync;
-  }
+  // Column operations
+  getColumns(workspaceId?: string): Promise<Record<string, Column>>;
+  getWorkspaceColumns(workspaceId: string): Promise<Column[]>;
+  saveColumn(column: Column): Promise<void>;
+  getColumn(id: string): Promise<Column | undefined>;
+  deleteColumn(id: string): Promise<void>;
 
-  // Get the current storage type
-  async getStorageType(): Promise<"local" | "sync"> {
-    // First try to get settings from both locations to determine which is active
-    const localSettings = await new Promise<AppSettings | undefined>(
-      (resolve) => {
-        chrome.storage.local.get(["settings"], (result) => {
-          resolve(result.settings as AppSettings | undefined);
-        });
-      }
-    );
+  // Workspace operations
+  getWorkspaces(): Promise<Record<string, Workspace>>;
+  getWorkspace(id: string): Promise<Workspace | undefined>;
+  saveWorkspace(workspace: Workspace): Promise<void>;
+  deleteWorkspace(id: string): Promise<void>;
+  getWorkspaceSettings(): Promise<WorkspaceSettings>;
+  getActiveWorkspaceId(): Promise<string>;
+  updateWorkspaceSettings(
+    settings: Partial<WorkspaceSettings>
+  ): Promise<WorkspaceSettings>;
+  switchWorkspace(workspaceId: string): Promise<void>;
 
-    const syncSettings = await new Promise<AppSettings | undefined>(
-      (resolve) => {
-        chrome.storage.sync.get(["settings"], (result) => {
-          resolve(result.settings as AppSettings | undefined);
-        });
-      }
-    );
+  // Bookmark statistics
+  getBookmarkStats(): Promise<Record<string, BookmarkStats>>;
+  trackBookmarkClick(bookmarkId: string): Promise<void>;
+  getMostUsedBookmarks(
+    limit?: number
+  ): Promise<{ bookmark: Bookmark; stats: BookmarkStats }[]>;
 
-    // Logic to determine which storage is actually active
-    if (syncSettings && syncSettings.storageType === "sync") {
-      // If sync settings exist and indicate sync storage, use sync
-      console.log("Verified sync storage is active based on sync settings");
-      this.setStorageType("sync");
-      return "sync";
-    } else if (localSettings && localSettings.storageType === "local") {
-      // If local settings exist and indicate local storage, use local
-      console.log("Verified local storage is active based on local settings");
-      this.setStorageType("local");
-      return "local";
-    } else if (syncSettings) {
-      // If only sync settings exist, use sync regardless of what it says
-      console.log("Using sync storage because settings only exist there");
-      this.setStorageType("sync");
-      return "sync";
-    } else if (localSettings) {
-      // If only local settings exist, use local regardless of what it says
-      console.log("Using local storage because settings only exist there");
-      this.setStorageType("local");
-      return "local";
-    }
+  // Default data management
+  initializeDefaultData(): Promise<void>;
 
-    // Default to local if nothing found
-    console.log("No settings found in either storage, defaulting to local");
-    this.setStorageType("local");
-    return "local";
-  }
+  // Default opens management
+  removeDefaultOpen(workspaceId: string, bookmarkId: string): Promise<void>;
+  getDefaultOpens(workspaceId: string): Promise<Bookmark[]>;
+  reorderDefaultOpens(workspaceId: string, newOrder: string[]): Promise<void>;
+  openDefaultBookmarks(
+    workspaceId: string,
+    inNewWindow?: boolean
+  ): Promise<void>;
+}
 
+export class StorageService implements IStorageService {
   // Helper method to get data from Chrome storage
   private async get<T>(key: keyof StorageData): Promise<T | undefined> {
     return new Promise((resolve) => {
@@ -140,6 +129,33 @@ class StorageService {
     });
   }
 
+  private activeStorage: chrome.storage.StorageArea = chrome.storage.local;
+
+  async initialize(): Promise<void> {
+    let settings = await this.getSettings();
+    if (!settings.storageType) {
+      // Default to local storage if storage type is not set
+      this.set("settings", {
+        ...settings,
+        storageType: "local",
+      } as AppSettings);
+
+      settings = await this.getSettings();
+    }
+    this.setStorageType(settings.storageType);
+  }
+  setStorageType(type: "local" | "sync"): void {
+    this.activeStorage =
+      type === "local" ? chrome.storage.local : chrome.storage.sync;
+  }
+  getStorageType(): Promise<"local" | "sync"> {
+    return new Promise((resolve) => {
+      this.activeStorage.get(["settings"], (result) => {
+        const settings = result.settings as AppSettings;
+        resolve(settings.storageType);
+      });
+    });
+  }
   /**
    * Migrate data between storage types
    * This function handles transferring data from one storage area to another
@@ -321,96 +337,8 @@ class StorageService {
 
   // Get all workspaces
   async getWorkspaces(): Promise<Record<string, Workspace>> {
-    // First determine the correct storage type
-    const storageType = await this.getStorageType();
-    this.setStorageType(storageType);
-
-    // Try to get workspaces from the active storage
     const workspaces = await this.get<Record<string, Workspace>>("workspaces");
-
-    // Before creating defaults, check both storage locations
-    if (!workspaces || Object.keys(workspaces).length === 0) {
-      // Check sync storage if we're on local
-      if (storageType === "local") {
-        const syncWorkspaces = await new Promise<
-          Record<string, Workspace> | undefined
-        >((resolve) => {
-          chrome.storage.sync.get(["workspaces"], (result) => {
-            resolve(result.workspaces);
-          });
-        });
-
-        if (syncWorkspaces && Object.keys(syncWorkspaces).length > 0) {
-          // If found in sync, use that data and migrate it to local
-          await this.migrateStorage("local");
-          return syncWorkspaces;
-        }
-      }
-
-      // Check local storage if we're on sync
-      if (storageType === "sync") {
-        const localWorkspaces = await new Promise<
-          Record<string, Workspace> | undefined
-        >((resolve) => {
-          chrome.storage.local.get(["workspaces"], (result) => {
-            resolve(result.workspaces);
-          });
-        });
-
-        if (localWorkspaces && Object.keys(localWorkspaces).length > 0) {
-          // If found in local, use that data and migrate it to sync
-          await this.migrateStorage("sync");
-          return localWorkspaces;
-        }
-      }
-
-      // If no data found in either location, create defaults
-      const defaultColumns: Column[] = [
-        {
-          id: "to-read",
-          title: "To Read",
-          bookmarkIds: [],
-          workspaceId: "default",
-          createdAt: new Date().toISOString(),
-          order: 0,
-        },
-        {
-          id: "reading",
-          title: "Reading",
-          bookmarkIds: [],
-          workspaceId: "default",
-          createdAt: new Date().toISOString(),
-          order: 1,
-        },
-        {
-          id: "completed",
-          title: "Completed",
-          bookmarkIds: [],
-          workspaceId: "default",
-          createdAt: new Date().toISOString(),
-          order: 2,
-        },
-      ];
-      const defaultWorkspace: Workspace = {
-        id: "default",
-        name: "Default",
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-        columnIds: defaultColumns.map((column) => column.id),
-      };
-
-      // Save to the correct storage area
-      const columnsObj = defaultColumns.reduce((acc, column) => {
-        acc[column.id] = column;
-        return acc;
-      }, {} as Record<string, Column>);
-
-      await this.set("columns", columnsObj);
-      await this.set("workspaces", { default: defaultWorkspace });
-      return { default: defaultWorkspace };
-    }
-
-    return workspaces;
+    return workspaces || {};
   }
 
   // Get a single workspace
@@ -424,6 +352,37 @@ class StorageService {
     const workspaces = await this.getWorkspaces();
     workspaces[workspace.id] = workspace;
     await this.set("workspaces", workspaces);
+  }
+
+  async switchWorkspace(workspaceId: string): Promise<void> {
+    const workspaces = await this.getWorkspaces();
+    const workspace = workspaces[workspaceId];
+    if (!workspace) {
+      throw new Error(`Workspace with ID ${workspaceId} not found`);
+    }
+    await this.updateWorkspaceSettings({
+      lastVisitedWorkspaceId: workspaceId,
+    });
+    await this.updateWorkspaceColumns(workspaceId);
+    // Update the active workspace ID in the settings
+    await this.set("workspaceSettings", {
+      ...workspace,
+      lastVisitedWorkspaceId: workspaceId,
+    });
+  }
+
+  // Update workspace columns
+  async updateWorkspaceColumns(workspaceId: string): Promise<void> {
+    const columns = await this.getColumns(workspaceId);
+    const workspace = await this.getWorkspace(workspaceId);
+    if (!workspace) {
+      throw new Error(`Workspace with ID ${workspaceId} not found`);
+    }
+    const updatedColumns = Object.values(columns).map((column) => ({
+      ...column,
+      workspaceId,
+    }));
+    await Promise.all(updatedColumns.map((column) => this.saveColumn(column)));
   }
 
   // Delete a workspace
@@ -462,7 +421,6 @@ class StorageService {
     return stats || {};
   }
 
-  // Track bookmark click
   async trackBookmarkClick(bookmarkId: string): Promise<void> {
     const stats = await this.getBookmarkStats();
 
@@ -479,8 +437,6 @@ class StorageService {
 
     await this.set("bookmarkStats", stats);
   }
-
-  // Get most used bookmarks
   async getMostUsedBookmarks(
     limit: number = 10
   ): Promise<{ bookmark: Bookmark; stats: BookmarkStats }[]> {
@@ -499,100 +455,71 @@ class StorageService {
 
     return bookmarksWithStats;
   }
-
-  // Initialize default data if needed
   async initializeDefaultData(): Promise<void> {
-    const workspaces = await this.getWorkspaces();
+    try {
+      const workspaces = await this.getWorkspaces();
 
-    // If no workspaces exist, create default workspace and columns
-    if (Object.keys(workspaces).length === 0) {
-      const defaultWorkspace: Workspace = {
-        id: "default",
-        name: "Default",
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-        columnIds: ["to-read", "reading", "completed"],
-      };
+      // If no workspaces exist, create default workspace and columns
+      if (!workspaces || Object.keys(workspaces).length === 0) {
+        console.log("No workspaces found, creating defaults...");
 
-      const defaultColumns: Column[] = [
-        {
-          id: "to-read",
-          title: "To Read",
-          bookmarkIds: [],
-          workspaceId: "default",
+        const defaultWorkspace: Workspace = {
+          id: "default",
+          name: "Default",
           createdAt: new Date().toISOString(),
-          order: 0,
-        },
-        {
-          id: "reading",
-          title: "Reading",
-          bookmarkIds: [],
-          workspaceId: "default",
-          createdAt: new Date().toISOString(),
-          order: 1,
-        },
-        {
-          id: "completed",
-          title: "Completed",
-          bookmarkIds: [],
-          workspaceId: "default",
-          createdAt: new Date().toISOString(),
-          order: 2,
-        },
-      ];
+          updatedAt: new Date().toISOString(),
+          columnIds: ["to-read", "reading", "completed"],
+        };
 
-      // Save default workspace and columns
-      await this.saveWorkspace(defaultWorkspace);
+        const defaultColumns: Column[] = [
+          {
+            id: "to-read",
+            title: "To Read",
+            bookmarkIds: [],
+            workspaceId: "default",
+            createdAt: new Date().toISOString(),
+            order: 0,
+          },
+          {
+            id: "reading",
+            title: "Reading",
+            bookmarkIds: [],
+            workspaceId: "default",
+            createdAt: new Date().toISOString(),
+            order: 1,
+          },
+          {
+            id: "completed",
+            title: "Completed",
+            bookmarkIds: [],
+            workspaceId: "default",
+            createdAt: new Date().toISOString(),
+            order: 2,
+          },
+        ];
 
-      const columnsObj = defaultColumns.reduce((acc, column) => {
-        acc[column.id] = column;
-        return acc;
-      }, {} as Record<string, Column>);
+        // Save default workspace and columns
+        await this.set("workspaces", { default: defaultWorkspace });
 
-      await this.set("columns", columnsObj);
+        const columnsObj = defaultColumns.reduce((acc, column) => {
+          acc[column.id] = column;
+          return acc;
+        }, {} as Record<string, Column>);
 
-      // Set default workspace settings
-      await this.updateWorkspaceSettings({
-        defaultWorkspaceId: "default",
-        lastVisitedWorkspaceId: "default",
-      });
+        await this.set("columns", columnsObj);
+
+        // Set default workspace settings
+        await this.set("workspaceSettings", {
+          defaultWorkspaceId: "default",
+          lastVisitedWorkspaceId: "default",
+        });
+
+        console.log("Default data created successfully");
+      }
+    } catch (error) {
+      console.error("Failed to initialize default data:", error);
+      throw error;
     }
-  }
-
-  // Add these methods to the StorageService class in src/utils/storage.ts
-
-  /**
-   * Add a bookmark to the default opens for a workspace
-   * @param workspaceId The ID of the workspace
-   * @param bookmarkId The ID of the bookmark to add
-   */
-  async addDefaultOpen(workspaceId: string, bookmarkId: string): Promise<void> {
-    const workspace = await this.getWorkspace(workspaceId);
-    if (!workspace) {
-      throw new Error("Workspace not found");
-    }
-
-    // Initialize defaultOpenIds if it doesn't exist
-    if (!workspace.defaultOpenIds) {
-      workspace.defaultOpenIds = [];
-    }
-
-    // Check if already in default opens
-    if (workspace.defaultOpenIds.includes(bookmarkId)) {
-      return; // Already in default opens, no action needed
-    }
-
-    // Check if limit reached
-    if (workspace.defaultOpenIds.length >= 10) {
-      throw new Error("Maximum number of default opens reached (10)");
-    }
-
-    // Add to default opens
-    workspace.defaultOpenIds.push(bookmarkId);
-    workspace.updatedAt = new Date().toISOString();
-
-    // Save workspace
-    await this.saveWorkspace(workspace);
   }
 
   /**
@@ -618,7 +545,6 @@ class StorageService {
     // Save workspace
     await this.saveWorkspace(workspace);
   }
-
   /**
    * Get all default opens for a workspace
    * @param workspaceId The ID of the workspace
@@ -633,20 +559,9 @@ class StorageService {
     ) {
       return []; // No default opens
     }
-
     const bookmarks = await this.getBookmarks();
-
-    // Get all default open bookmarks and preserve their order
-    const defaultOpens: Bookmark[] = [];
-    for (const id of workspace.defaultOpenIds) {
-      if (bookmarks[id]) {
-        defaultOpens.push(bookmarks[id]);
-      }
-    }
-
-    return defaultOpens;
+    return workspace.defaultOpenIds.map((id) => bookmarks[id]);
   }
-
   /**
    * Reorder default opens for a workspace
    * @param workspaceId The ID of the workspace
@@ -751,5 +666,6 @@ class StorageService {
   }
 }
 
+// Create a singleton instance
 export const storageService = new StorageService();
 export default storageService;

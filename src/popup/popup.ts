@@ -244,7 +244,8 @@ function showBookmarkModal(
     modals.forEach((modal) => modal.remove());
   });
 
-  saveBtn.addEventListener("click", () => {
+  // In popup.ts where you create the modal
+  saveBtn.addEventListener("click", async () => {
     const newTitle = titleInput.value.trim();
     if (!newTitle) {
       showNotification("Title cannot be empty", "error");
@@ -262,9 +263,17 @@ function showBookmarkModal(
       return;
     }
 
-    addBookmarkToColumnWithTitle(columnId, newTitle, pageData);
-    const modals = document.querySelectorAll(".bookmark-modal");
-    modals.forEach((modal) => modal.remove());
+    try {
+      // Wait for the bookmark to be added before closing the modal
+      await addBookmarkToColumnWithTitle(columnId, newTitle, pageData);
+
+      // After successful completion, remove the modals
+      const modals = document.querySelectorAll(".bookmark-modal");
+      modals.forEach((modal) => modal.remove());
+    } catch (error) {
+      console.error("Error adding bookmark:", error);
+      showNotification("Failed to add bookmark. Please try again.", "error");
+    }
   });
 
   // If multiple columns, add selection handling
@@ -291,22 +300,23 @@ function showBookmarkModal(
   }
 }
 
-function addBookmarkToColumnWithTitle(
+async function addBookmarkToColumnWithTitle(
   columnId: string,
   title: string,
   pageData: NewBookmarkData
 ) {
+  const workspaceId = await storageService.getActiveWorkspaceId();
   chrome.runtime.sendMessage(
     {
       type: "ADD_CURRENT_PAGE",
       columnId: columnId,
-      workspaceId: storageService.getActiveWorkspaceId(),
+      workspaceId,
       customTitle: title,
       url: pageData.url,
       favicon: pageData.favicon,
     },
     (response) => {
-      if (response.success) {
+      if (response?.success) {
         showNotification("Bookmark added successfully", "success");
       } else {
         showNotification(`Error adding bookmark: ${response.error}`, "error");
