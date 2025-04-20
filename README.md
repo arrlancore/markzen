@@ -107,7 +107,7 @@ MarkZen uses Chrome's storage API to store all data locally:
 ## License
 
 ## TODO
-- [ ] auto populate meta description to description and keywords to tag if we add to bookmurk from popup
+- [x] auto populate meta description to description and keywords to tag if we add to bookmurk from popup
 - [x] simple auto complete search feature
 - [x] impement default open features
 - [ ] test from fresh data and perform all features
