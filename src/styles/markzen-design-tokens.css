@@ -7,9 +7,11 @@
   --color-primary: #3b82f6;
   --color-primary-light: #60a5fa;
   --color-primary-dark: #2563eb;
-  --color-background: #e6eef9;
-  --color-text: #2d3748;
-  --color-text-secondary: #4a5568;
+  --color-background: #ffffff;
+  --color-background-subtle: #f9fafb;
+  --color-border: #e2e8f0;
+  --color-text: #1e293b;
+  --color-text-secondary: #64748b;
   --color-success: #10b981;
   --color-error: #ef4444;
   --color-warning: #f59e0b;
@@ -27,7 +29,7 @@
   /* Primary UI color variants */
   --color-primary-glass: rgba(59, 130, 246, 0.3);
   --color-primary-glass-hover: rgba(59, 130, 246, 0.5);
-  
+
   /* Shadow colors */
   --shadow-standard: rgba(0, 0, 0, 0.15);
   --shadow-light: rgba(0, 0, 0, 0.1);
@@ -106,13 +108,43 @@
 
 /* Dark Theme Variables - adjusted for improved dark mode experience */
 [data-theme="dark"] {
+  /* Your existing variables */
   --color-background: #1e2235;
   --color-text: #e2e8f0;
   --color-text-secondary: #a0aec0;
+  --color-background-subtle: #2a2a3c;
+  --color-border: #383850;
+  --color-text-light: #94a3b8;
   
-  /* We don't need to modify most glass colors as they work well in dark mode */
-  /* But we can refine specific elements if needed */
-  --color-dark-glass: rgba(13, 15, 25, 0.85); 
+  /* Toggle variables */
+  --toggle-bg-off: #4a4a4a;
+  --toggle-knob: #e0e0e0;
+  --toggle-knob-shadow: rgba(0, 0, 0, 0.2);
+  
+  /* Shadow adjustments */
+  --box-shadow-subtle: 0 4px 6px rgba(0, 0, 0, 0.2);
+  --box-shadow-medium: 0 8px 16px rgba(0, 0, 0, 0.3);
+  --box-shadow-strong: 0 25px 50px rgba(0, 0, 0, 0.4);
+  
+  /* Glass morphism adjustments for dark mode */
+  --color-glass: rgba(42, 48, 66, 0.3);
+  --color-glass-hover: rgba(48, 54, 74, 0.4);
+  --color-glass-active: rgba(38, 44, 62, 0.5);
+  --color-dark-glass: rgba(13, 15, 25, 0.85);
+  --color-dark-glass-lighter: rgba(48, 54, 74, 0.3);
+  
+  /* Border colors for dark mode */
+  --border-light: rgba(255, 255, 255, 0.08);
+  --border-lighter: rgba(255, 255, 255, 0.04);
+  --border-dark: rgba(0, 0, 0, 0.2);
+  --border-dark-light: rgba(255, 255, 255, 0.06);
+  
+  /* Status colors adjustments */
+  --color-success: #0d9488; /* Slightly darker teal for dark mode */
+  --color-error: #dc2626; /* Slightly darker red */
+  --color-warning: #d97706; /* Slightly darker amber */
+  --color-danger: #dc2626;
+  --color-danger-hover: #b91c1c;
 }
 
 /* Utility Classes for Glass Morphism */
