@@ -3,9 +3,11 @@
 MarkZen is a Chrome extension that transforms browser bookmarks from a cluttered list into a visually organized workspace, bringing clarity and calm to your digital life while respecting your privacy. You have the flexibility to choose between local storage or Chrome sync to store your bookmarks and settings.
 
 The search is integrated directly into the new tab page, appearing as a clean search icon in the top-right corner next to your existing Kanban board and settings icons. When clicked, it displays a beautiful semi-transparent modal with a search input field.
-As the user types, the search automatically filters through all bookmarks across all workspaces, looking for matches in both titles and URLs. It prioritizes title matches over URL matches
+As the user types, the search automatically filters through all bookmarks across all workspaces, looking for matches in both titles and URLs. It prioritizes title matches over URL matches.
 
-Sync Storage Notes: 
+Additionally, MarkZen features a global search accessible from anywhere in the browser using the keyboard shortcut Command + Shift + K (⌘+⇧+K). This allows users to quickly find and access their bookmarks without needing to navigate to the new tab page first.
+
+Sync Storage Notes:
 - If the user isn't signed in: The sync storage works, but data remains only on that device - it's essentially the same as local storage in behavior.
 - If the user signs in: Chrome will automatically sync that storage data across all their devices where they're signed in with the same account.
 
@@ -14,6 +16,7 @@ Sync Storage Notes:
 - **Kanban-style Bookmark Management**: Visual drag-and-drop organization across customizable columns
 - **Workspace Management**: Create multiple workspaces (work, personal, projects) for context separation
 - **Enhanced New Tab Experience**: Beautiful background images, clock, and most frequently used bookmarks
+- **Global Search**: Access your bookmarks from anywhere with Command + Shift + K (⌘+⇧+K) keyboard shortcut
 - **Privacy-Focused**: All data stored locally with no login required
 - **Usage Analytics**: Track bookmark engagement to surface most valuable resources
 - **Open Multiple Bookmarks**: One click to open all bookmarks that set as default on a workspace
@@ -117,7 +120,8 @@ MarkZen uses Chrome's storage API to store all data locally:
 - [x] simple auto complete search feature
 - [x] impement default open features
 - [x] a simple note, show note icon on new tab
+- [x] implement global search with Command + Shift + K (⌘+⇧+K) shortcut
 - [ ] test from fresh data and perform all features
-- [ ] publish it  
+- [ ] enable tersear and publish it
 
 MIT
