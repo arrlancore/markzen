@@ -140,4 +140,5 @@ export const elements = {
   openDefaultsNewWindowBtn: document.getElementById(
     "open-defaults-new-window-btn"
   ) as HTMLButtonElement,
+  noteBtn: document.getElementById("note-btn") as HTMLButtonElement,
 };

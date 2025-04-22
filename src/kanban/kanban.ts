@@ -15,6 +15,7 @@ import themeService from "@/utils/theme-service";
 import storageService, { AppSettings } from "@/utils/storage";
 import { Column } from "@/models/bookmark";
 import analyticsService from "@/utils/analytics";
+import { openOrFocusTab } from "@/utils/tab-utils";
 
 // Current application state
 let state: KanbanState = {
@@ -211,6 +212,11 @@ function setupEventListeners(): void {
 
   // Add bookmark button (if it exists)
   elements.addBookmarkBtn?.addEventListener("click", handleAddCurrentPage);
+
+  // Add this to the existing event listener setup in kanban.ts
+  elements.noteBtn?.addEventListener("click", () => {
+    openOrFocusTab("note.html");
+  });
 }
 
 /**

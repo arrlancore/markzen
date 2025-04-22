@@ -150,9 +150,6 @@ function applySettingsToForm(): void {
  * Ensures that listeners are only added once
  */
 function setupEventListeners(): void {
-  // First, remove any existing event listeners by cloning and replacing elements
-  // This is a simple way to ensure we don't have duplicate listeners
-
   // Theme settings
   const themeSelect = elements.themeSelect;
   const newThemeSelect = themeSelect.cloneNode(true) as HTMLSelectElement;
@@ -238,15 +235,6 @@ ${
   elements.resetDataBtn = newResetDataBtn;
   elements.resetDataBtn.addEventListener("click", resetData);
 
-  // Navigation
-  const backBtn = elements.backBtn;
-  const newBackBtn = backBtn.cloneNode(true) as HTMLButtonElement;
-  backBtn.parentNode?.replaceChild(newBackBtn, backBtn);
-  elements.backBtn = newBackBtn;
-  elements.backBtn.addEventListener("click", () => {
-    openOrFocusTab("kanban.html");
-  });
-
   // Notification
   const notificationClose = elements.notificationClose;
   const newNotificationClose = notificationClose.cloneNode(
@@ -272,6 +260,15 @@ ${
   );
   elements.expirationDaysSelect = newExpirationDaysSelect;
   elements.expirationDaysSelect.addEventListener("change", saveSettings);
+
+  // Navigation event listeners
+  document.getElementById("kanban-btn")?.addEventListener("click", () => {
+    openOrFocusTab("kanban.html");
+  });
+
+  document.getElementById("note-btn")?.addEventListener("click", () => {
+    openOrFocusTab("note.html");
+  });
 
   // Log for debugging
   console.log("Event listeners have been set up");

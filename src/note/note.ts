@@ -2,6 +2,7 @@ import "./note.css";
 import noteService from "../utils/note-service";
 import { parseMarkdown } from "../utils/markdown-parser";
 import themeService from "../utils/theme-service";
+import { openOrFocusTab } from "@/utils/tab-utils";
 
 // DOM Elements
 const noteContent = document.getElementById(
@@ -69,6 +70,7 @@ async function initNotePage() {
 }
 
 // Add event listeners
+// Add event listeners
 function addEventListeners() {
   // Preview toggle
   previewToggleBtn.addEventListener("click", togglePreview);
@@ -85,14 +87,23 @@ function addEventListeners() {
   // Close help
   closeMarkdownHelp.addEventListener("click", toggleMarkdownHelp);
 
-  // Back button
-  backBtn.addEventListener("click", () => {
+  // Navigation event listeners
+  document.getElementById("kanban-btn")?.addEventListener("click", () => {
     // Save changes before navigating
     const currentContent = noteContent.value;
     if (currentContent !== lastContent) {
       noteService.saveNote(currentContent, true);
     }
-    window.location.href = "newtab.html";
+    openOrFocusTab("kanban.html");
+  });
+
+  document.getElementById("settings-btn")?.addEventListener("click", () => {
+    // Save changes before navigating
+    const currentContent = noteContent.value;
+    if (currentContent !== lastContent) {
+      noteService.saveNote(currentContent, true);
+    }
+    openOrFocusTab("settings.html");
   });
 
   // Notification close

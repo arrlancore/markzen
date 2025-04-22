@@ -32,39 +32,6 @@ body {
   height: 100%;
 }
 
-/* Header styles */
-.app-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: var(--space-md) var(--space-xl);
-  background-color: var(--color-background);
-  border-bottom: 1px solid var(--color-border);
-  box-shadow: var(--box-shadow-subtle);
-}
-
-.logo {
-  display: flex;
-  align-items: center;
-}
-
-.logo-img {
-  width: 24px;
-  height: 24px;
-  margin-right: var(--space-md);
-}
-
-.logo-text {
-  font-size: var(--font-size-xl);
-  font-weight: var(--font-weight-semibold);
-  color: var(--color-text);
-}
-
-.header-actions {
-  display: flex;
-  align-items: center;
-  gap: var(--space-md);
-}
 
 .action-button {
   display: flex;
@@ -483,4 +450,11 @@ body {
     width: 95%;
     padding: var(--space-md);
   }
+}
+
+/* Only add the classes that are not already in the design tokens */
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
 }
