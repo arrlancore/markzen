@@ -98,12 +98,26 @@ export class OmniboxService {
           .filter(pos => pos.fieldName === 'title')
           .flatMap(pos => pos.indices);
 
-        // For multi-word searches, highlight each word individually
-        const isMultiWordSearch = text.trim().includes(' ');
-        const matchLength = isMultiWordSearch ?
-          // For multi-word, use the individual token lengths where possible
-          Math.min(text.split(/\s+/)[0].length, text.length) :
-          text.length;
+        // Parse search tokens and determine highlighting approach
+        const searchTokens = text.trim().split(/\s+/).filter(t => t.length > 0);
+        const isMultiWordSearch = searchTokens.length > 1;
+
+        // Calculate variable match length based on search tokens
+        let matchLength = text.length; // Default for single word
+
+        if (isMultiWordSearch) {
+          // For multi-word searches, base highlight length on the average token length
+          // but with a minimum to ensure visibility
+          const avgTokenLength = searchTokens.reduce((sum, token) => sum + token.length, 0) / searchTokens.length;
+          matchLength = Math.max(2, Math.ceil(avgTokenLength));
+        }
+
+        // Special case for short prefixes (like 1-2 character searches)
+        const hasShortToken = searchTokens.some(token => token.length <= 2);
+        if (hasShortToken) {
+          // For short tokens, make sure we highlight at least 2-3 characters
+          matchLength = Math.max(matchLength, 2);
+        }
 
         const formattedTitle = formatTextWithHighlights(
           bookmark.title,
@@ -126,6 +140,10 @@ export class OmniboxService {
           urlMatches,
           matchLength // Use the same matchLength variable for consistency
         );
+
+        // Also check for matches in description and tags for completeness
+        const hasDescriptionMatch = result.matchPositions.some(pos => pos.fieldName === 'description');
+        const hasTagMatch = result.matchPositions.some(pos => pos.fieldName === 'tags');
 
         // Create description with title and URL
         const description = `${formattedTitle.description} <dim>(${workspace})</dim> <url>${formattedUrl.description}</url>`;
@@ -221,20 +239,37 @@ export class OmniboxService {
     const bookmarksArray = Object.values(this.bookmarks);
 
     // Determine if this is likely a multi-word search
-    const isMultiWordSearch = query.trim().includes(' ');
+    const searchTokens = query.trim().split(/\s+/);
+    const isMultiWordSearch = searchTokens.length > 1;
+
+    // For partial word matching like "cloud prod my", we need an even lower threshold
+    // The more words, the lower the threshold should be
+    let threshold = 5; // Default for single word searches
+
+    if (isMultiWordSearch) {
+      // Base threshold of 3 for two words, then decrease further for more words
+      threshold = Math.max(1, 3 - (searchTokens.length - 2) * 0.5);
+
+      // If the query contains very short terms (1-2 chars), lower threshold further
+      const hasShortTerms = searchTokens.some(token => token.length < 3);
+      if (hasShortTerms) {
+        threshold *= 0.8;
+      }
+    }
 
     // Search with our fuzzy search utility
     return fuzzySearch(
       bookmarksArray,
       [
-        { name: 'title', weight: 2.5 },  // Title is most important, boost further
+        { name: 'title', weight: 3.0 },  // Title is most important, boost further (was 2.5)
         { name: 'url', weight: 0.7 },    // URL is next
         { name: 'description', weight: 0.4 }, // Description less important
+        { name: 'tags', weight: 0.8 }    // Add tags as a searchable field
       ],
       query,
       {
         limit: MAX_SUGGESTIONS,
-        threshold: isMultiWordSearch ? 3 : 5 // Lower threshold for multi-word searches
+        threshold: threshold
       }
     );
   }

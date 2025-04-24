@@ -107,50 +107,140 @@ function hasPrefixMatch(searchTerm: string, target: string): boolean {
 /**
  * Check if multiple words appear in sequence in the target, allowing skipped words
  * This helps with queries like "aws dash" matching "AWS dashboard admin"
+ * or "cloud prod my" matching "Cloudwatch Production MyApp"
  */
-function hasSequentialWordMatch(searchTerms: string[], target: string): {matched: boolean; ratio: number} {
-  if (!searchTerms.length || !target) return {matched: false, ratio: 0};
+function hasSequentialWordMatch(searchTerms: string[], target: string): {matched: boolean; ratio: number; matchQuality: number} {
+  if (!searchTerms.length || !target) return {matched: false, ratio: 0, matchQuality: 0};
 
   const targetTokens = tokenize(target);
-  if (!targetTokens.length) return {matched: false, ratio: 0};
+  if (!targetTokens.length) return {matched: false, ratio: 0, matchQuality: 0};
 
   let matchCount = 0;
+  let matchQuality = 0; // Track quality of matches (exact vs partial)
   let currentTargetIndex = 0;
+  const matchedPositions: number[] = []; // Track which target positions we've matched
 
   // For each search term, try to find a matching target token
   for (const searchTerm of searchTerms) {
-    let found = false;
+    // Skip empty search terms
+    if (searchTerm.length === 0) continue;
 
-    // Look for a match at or after the current position
+    let found = false;
+    let bestMatchQuality = 0;
+    let bestMatchIndex = -1;
+
+    // First pass: Look for a match at or after the current position (sequential matching)
     for (let i = currentTargetIndex; i < targetTokens.length; i++) {
       const targetToken = targetTokens[i];
 
-      // Match if target token starts with search term
-      if (targetToken.startsWith(searchTerm)) {
-        matchCount++;
-        currentTargetIndex = i + 1; // Move past this match
+      // Calculate match quality based on how many characters match
+      // This handles partial matches like "cloud" matching "cloudwatch"
+      const termQuality = calculatePartialMatchQuality(searchTerm, targetToken);
+
+      if (termQuality > 0.3 && termQuality > bestMatchQuality) { // Threshold for considering it a match
+        bestMatchQuality = termQuality;
+        bestMatchIndex = i;
         found = true;
-        break;
+
+        // If it's an excellent match (>0.8), we can stop looking
+        if (termQuality > 0.8) break;
       }
     }
 
-    // If we didn't find this term, try just matching anywhere
-    if (!found) {
+    // If found a sequential match, update state
+    if (found && bestMatchIndex >= 0) {
+      matchCount++;
+      matchQuality += bestMatchQuality;
+      currentTargetIndex = bestMatchIndex + 1; // Move past this match
+      matchedPositions.push(bestMatchIndex);
+    } else {
+      // Second pass: If no sequential match, try matching anywhere
+      // But ignore positions we've already matched
       for (let i = 0; i < targetTokens.length; i++) {
-        if (targetTokens[i].startsWith(searchTerm)) {
-          matchCount += 0.5; // Partial credit for unordered matches
+        if (matchedPositions.includes(i)) continue; // Skip already matched positions
+
+        const termQuality = calculatePartialMatchQuality(searchTerm, targetTokens[i]);
+
+        if (termQuality > 0.3 && termQuality > bestMatchQuality) { // Same threshold for consistency
+          bestMatchQuality = termQuality;
+          bestMatchIndex = i;
           found = true;
-          break;
+
+          if (termQuality > 0.8) break;
         }
+      }
+
+      // If found a non-sequential match, give partial credit
+      if (found && bestMatchIndex >= 0) {
+        matchCount += 0.7; // Higher partial credit (was 0.5)
+        matchQuality += bestMatchQuality * 0.7; // Scale the quality too
+        matchedPositions.push(bestMatchIndex);
       }
     }
   }
 
+  // Calculate match ratio, adjusted for multi-word searches
   const ratio = matchCount / searchTerms.length;
+
+  // Calculate average match quality
+  const avgMatchQuality = matchQuality / Math.max(matchCount, 1);
+
   return {
     matched: ratio > 0,
-    ratio: ratio
+    ratio: ratio,
+    matchQuality: avgMatchQuality
   };
+}
+
+/**
+ * Calculate how well a search term partially matches a target token
+ * Returns a value between 0 and 1, where 1 is a perfect match
+ */
+function calculatePartialMatchQuality(searchTerm: string, targetToken: string): number {
+  if (!searchTerm || !targetToken) return 0;
+
+  searchTerm = searchTerm.toLowerCase();
+  targetToken = targetToken.toLowerCase();
+
+  // Perfect match
+  if (searchTerm === targetToken) return 1;
+
+  // Prefix match (e.g., "cloud" matches "cloudwatch")
+  if (targetToken.startsWith(searchTerm)) {
+    // The longer the search term relative to the target, the better the match
+    return 0.7 + (0.3 * searchTerm.length / targetToken.length);
+  }
+
+  // Contains match (e.g., "watch" in "cloudwatch")
+  if (targetToken.includes(searchTerm)) {
+    // Not as good as prefix match, but still valuable
+    return 0.5 + (0.2 * searchTerm.length / targetToken.length);
+  }
+
+  // Calculate character-by-character similarity for very partial matches
+  // This helps with typos and abbreviations
+  const maxLength = Math.max(searchTerm.length, targetToken.length);
+  let matchingChars = 0;
+
+  // Check if the search term characters appear in order in the target
+  // e.g., "cldw" could partially match "cloudwatch"
+  let targetIndex = 0;
+  for (const char of searchTerm) {
+    // Look for this character from the current position onward
+    const foundIndex = targetToken.indexOf(char, targetIndex);
+    if (foundIndex >= 0) {
+      matchingChars++;
+      targetIndex = foundIndex + 1; // Continue search after this match
+    }
+  }
+
+  // If we matched at least half the characters in sequence
+  if (matchingChars >= searchTerm.length / 2) {
+    return 0.3 + (0.2 * matchingChars / searchTerm.length);
+  }
+
+  // Very low quality match or no match
+  return 0;
 }
 
 /**
@@ -222,7 +312,9 @@ function calculateScore(
       const sequentialMatch = hasSequentialWordMatch(searchTokens, fieldValue);
       if (sequentialMatch.matched) {
         // This is a major boost for sequential matches in titles - crucial for multi-word searches
-        score += sequentialMatch.ratio * 300 * options.fieldWeight;
+        // Use both ratio and matchQuality to better score partial matches across multiple words
+        const combinedScore = sequentialMatch.ratio * (0.3 + 0.7 * sequentialMatch.matchQuality);
+        score += combinedScore * 350 * options.fieldWeight; // Increased weight (was 300)
       }
     }
   }
@@ -307,14 +399,47 @@ export function fuzzySearch<T>(
         if (tokenScore > 0) {
           const fieldValueLower = fieldValue.toLowerCase();
           const tokenLower = token.toLowerCase();
-
-          // Find all instances of token in field
-          let pos = fieldValueLower.indexOf(tokenLower);
           const indices: number[] = [];
 
+          // First check for exact matches
+          let pos = fieldValueLower.indexOf(tokenLower);
           while (pos !== -1) {
             indices.push(pos);
             pos = fieldValueLower.indexOf(tokenLower, pos + 1);
+          }
+
+          // If no exact matches found, look for partial matches at the beginning of words
+          if (indices.length === 0 && tokenLower.length >= 2) {
+            const words = fieldValueLower.split(/\s+/);
+            let wordPos = 0;
+
+            for (const word of words) {
+              // Check if the word starts with the token or if token starts with the word
+              if (word.startsWith(tokenLower) ||
+                  (tokenLower.length >= 2 && tokenLower.startsWith(word))) {
+                indices.push(fieldValue.indexOf(word, wordPos));
+              }
+              // Check for partial matches where at least half the characters match in sequence
+              else if (word.length >= 3 && tokenLower.length >= 2) {
+                let matchingChars = 0;
+                let lastMatchPos = -1;
+
+                for (let i = 0; i < Math.min(tokenLower.length, 3); i++) {
+                  const charPos = word.indexOf(tokenLower[i], lastMatchPos + 1);
+                  if (charPos !== -1) {
+                    if (matchingChars === 0) {
+                      // Record position of first matching character
+                      indices.push(fieldValue.indexOf(word, wordPos) + charPos);
+                    }
+                    matchingChars++;
+                    lastMatchPos = charPos;
+                  }
+                }
+              }
+
+              // Move position pointer past this word
+              wordPos = fieldValue.indexOf(word, wordPos) + word.length;
+            }
           }
 
           if (indices.length > 0) {
@@ -323,7 +448,9 @@ export function fuzzySearch<T>(
               indices
             });
 
-            matches.push(fieldValue);
+            if (!matches.includes(fieldValue)) {
+              matches.push(fieldValue);
+            }
           }
         }
       }
@@ -353,6 +480,7 @@ export function fuzzySearch<T>(
 
 /**
  * Format text for display in omnibox with highlights
+ * Enhanced to better handle partial matches
  */
 export function formatTextWithHighlights(
   text: string,
@@ -361,17 +489,86 @@ export function formatTextWithHighlights(
 ): { content: string; description: string } {
   if (!text) return { content: '', description: '' };
 
-  // Sort positions to process from end to start
-  const sortedPositions = [...matchPositions].sort((a, b) => b - a);
+  // Handle empty positions array
+  if (!matchPositions || matchPositions.length === 0) {
+    // If no matches but text contains spaces, try to highlight word prefixes
+    if (text.includes(' ')) {
+      return highlightWordPrefixes(text);
+    }
+    return { content: text, description: text };
+  }
 
-  // Build highlighted string with <match> tags
-  let highlighted = text;
+  // Merge nearby match positions to avoid excessive highlighting
+  const mergedPositions: {start: number; end: number}[] = [];
+
+  // Sort positions in ascending order for merging
+  const sortedPositions = [...matchPositions].sort((a, b) => a - b);
+
+  // Create initial ranges
   for (const pos of sortedPositions) {
     const matchEnd = Math.min(pos + matchLength, text.length);
+
+    // Try to merge with previous range if they overlap or are very close
+    if (mergedPositions.length > 0) {
+      const lastRange = mergedPositions[mergedPositions.length - 1];
+
+      // If current position overlaps or is close to previous range, extend it
+      if (pos <= lastRange.end + 2) { // Allow a 2-character gap
+        lastRange.end = Math.max(lastRange.end, matchEnd);
+        continue;
+      }
+    }
+
+    // Add new range
+    mergedPositions.push({
+      start: pos,
+      end: matchEnd
+    });
+  }
+
+  // Apply highlights from end to start to avoid position shifting
+  let highlighted = text;
+  for (let i = mergedPositions.length - 1; i >= 0; i--) {
+    const range = mergedPositions[i];
     highlighted =
-      highlighted.substring(0, pos) +
-      '<match>' + highlighted.substring(pos, matchEnd) + '</match>' +
-      highlighted.substring(matchEnd);
+      highlighted.substring(0, range.start) +
+      '<match>' + highlighted.substring(range.start, range.end) + '</match>' +
+      highlighted.substring(range.end);
+  }
+
+  return {
+    content: text,
+    description: highlighted
+  };
+}
+
+/**
+ * Highlight the first few characters of each word in multi-word text
+ * Useful for partial matches like "cloud prod my" -> "Cloudwatch Production MyApp"
+ */
+function highlightWordPrefixes(text: string): { content: string; description: string } {
+  const words = text.split(/\s+/);
+  let highlighted = text;
+
+  // Process words from right to left to preserve positions
+  for (let i = words.length - 1; i >= 0; i--) {
+    const word = words[i];
+    if (word.length === 0) continue;
+
+    // Find position of this word in the original text
+    const wordPos = highlighted.lastIndexOf(word);
+    if (wordPos >= 0) {
+      // Highlight first 2-4 characters based on word length
+      const charsToHighlight = Math.min(
+        word.length,
+        Math.max(2, Math.ceil(word.length * 0.4))
+      );
+
+      highlighted =
+        highlighted.substring(0, wordPos) +
+        '<match>' + highlighted.substring(wordPos, wordPos + charsToHighlight) + '</match>' +
+        highlighted.substring(wordPos + charsToHighlight);
+    }
   }
 
   return {
