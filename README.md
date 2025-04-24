@@ -5,7 +5,11 @@ MarkZen is a Chrome extension that transforms browser bookmarks from a cluttered
 The search is integrated directly into the new tab page, appearing as a clean search icon in the top-right corner next to your existing Kanban board and settings icons. When clicked, it displays a beautiful semi-transparent modal with a search input field.
 As the user types, the search automatically filters through all bookmarks across all workspaces, looking for matches in both titles and URLs. It prioritizes title matches over URL matches.
 
-Additionally, MarkZen features a global search accessible from anywhere in the browser using the keyboard shortcut Command + Shift + K (⌘+⇧+K). This allows users to quickly find and access their bookmarks without needing to navigate to the new tab page first.
+Additionally, MarkZen offers two powerful ways to search your bookmarks from anywhere:
+
+1. **Omnibox Search**: Type `mz` in the address bar, press Tab, and start typing to instantly search all your bookmarks with smart matching. This fuzzy search intelligently matches partial words, acronyms, and even skipped words, making it easy to find bookmarks with queries like "aws dash" to find "AWS dashboard admin".
+
+2. **Global Search**: Access your bookmarks using the keyboard shortcut Command + Shift + K (⌘+⇧+K). This allows users to quickly find and access their bookmarks without needing to navigate to the new tab page first.
 
 Sync Storage Notes:
 - If the user isn't signed in: The sync storage works, but data remains only on that device - it's essentially the same as local storage in behavior.
@@ -16,7 +20,9 @@ Sync Storage Notes:
 - **Kanban-style Bookmark Management**: Visual drag-and-drop organization across customizable columns
 - **Workspace Management**: Create multiple workspaces (work, personal, projects) for context separation
 - **Enhanced New Tab Experience**: Beautiful background images, clock, and most frequently used bookmarks
+- **Smart Omnibox Search**: Type `mz` + Tab in the address bar to search bookmarks with fuzzy matching from anywhere
 - **Global Search**: Access your bookmarks from anywhere with Command + Shift + K (⌘+⇧+K) keyboard shortcut
+- **Intelligent Matching**: Find bookmarks easily with partial words, acronyms, and skipped words
 - **Privacy-Focused**: All data stored locally with no login required
 - **Usage Analytics**: Track bookmark engagement to surface most valuable resources
 - **Open Multiple Bookmarks**: One click to open all bookmarks that set as default on a workspace
@@ -61,12 +67,16 @@ markzen/
 │   │   ├── note.ts           # Note functionality
 │   │   ├── note.html         # Note HTML
 │   │   └── note.css          # Note styles
+│   ├── services/              # Service components
+│   │   ├── RootService.ts    # Root service handling initialization
+│   │   └── OmniboxService.ts # Omnibox search service
 │   ├── utils/                # Utility functions
 │   │   ├── storage.ts        # Storage management
 │   │   ├── analytics.ts      # Usage analytics
 │   │   ├── theme-service.ts  # Theme service
-│   │   ├── note-service.ts   # Note service [NEW]
-│   │   └── markdown-parser.ts # Markdown parser [NEW]
+│   │   ├── note-service.ts   # Note service
+│   │   ├── fuzzy-search.ts   # Smart fuzzy search algorithms
+│   │   └── markdown-parser.ts # Markdown parser
 │   └── models/               # Data models
 │       ├── bookmark.ts       # Bookmark model
 │       └── workspace.ts      # Workspace model
@@ -121,7 +131,8 @@ MarkZen uses Chrome's storage API to store all data locally:
 - [x] impement default open features
 - [x] a simple note, show note icon on new tab
 - [x] implement global search with Command + Shift + K (⌘+⇧+K) shortcut
+- [x] add omnibox search with smart fuzzy matching (type "mz" + Tab in address bar)
 - [ ] test from fresh data and perform all features
-- [ ] enable tersear and publish it
+- [ ] enable terser and publish it
 
 MIT

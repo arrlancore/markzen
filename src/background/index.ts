@@ -6,7 +6,15 @@ console.log("Background script starting...");
 const initializeExtension = async () => {
   try {
     await rootService.initialize();
-    console.log("Services initialized");
+
+    // Set up default omnibox suggestion
+    if (chrome.omnibox) {
+      chrome.omnibox.setDefaultSuggestion({
+        description: "Type to search your MarkZen bookmarks"
+      });
+    }
+
+    console.log("Services initialized successfully");
   } catch (error) {
     console.error("Initialization error:", error);
     throw error;
@@ -28,6 +36,34 @@ chrome.runtime.onInstalled.addListener(async (details) => {
       await rootService.initialize();
       await rootService.storage.initializeDefaultData();
       console.log("Default data initialized successfully");
+
+      // Show a welcome notification about the omnibox feature
+      chrome.notifications.create("omnibox-feature", {
+        type: "basic",
+        iconUrl: "assets/images/icon128.png",
+        title: "MarkZen Tip: Quick Bookmark Search",
+        message: "Type 'mz' in the address bar and press Tab to quickly search your bookmarks with smart matching!",
+        priority: 1
+      });
+    } else if (details.reason === "update") {
+      // If this is an update that added the omnibox feature
+      const manifest = chrome.runtime.getManifest();
+
+      // Notify users about the new omnibox feature (only once)
+      chrome.storage.local.get("omniboxFeatureNotified", (data) => {
+        if (!data.omniboxFeatureNotified) {
+          chrome.notifications.create("omnibox-feature-update", {
+            type: "basic",
+            iconUrl: "assets/images/icon128.png",
+            title: "New in MarkZen: Quick Bookmark Search",
+            message: "Type 'mz' in the address bar and press Tab to quickly search your bookmarks with smart matching!",
+            priority: 1
+          });
+
+          // Mark as notified
+          chrome.storage.local.set({ omniboxFeatureNotified: true });
+        }
+      });
     }
   } catch (error) {
     console.error("Installation handling failed:", error);

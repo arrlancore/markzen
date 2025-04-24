@@ -1,0 +1,13 @@
+project_prompt = '''
+- Before starting work, ensure that the TypeScript library adheres to the Chrome Extension Manifest V3 guidelines.
+- Write clear and concise TypeScript code, ensuring compatibility with the Chrome browser.
+- After completing your task, run format and lint commands to ensure code quality.
+- Use the provided commands for building and packaging the Chrome extension.
+- Document any new features or changes within the appropriate documentation files.
+'''
+
+[commands]
+format = ["npx prettier --write ."]
+lint = ["npx eslint ."]
+build = ["npm run build"]
+reset = ["npm run reset"]
