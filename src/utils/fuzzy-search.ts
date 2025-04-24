@@ -12,10 +12,11 @@
  * Interface for a search match result
  */
 export interface FuzzySearchResult<T> {
-  item: T;             // The original item
-  score: number;       // Score (higher is better match)
-  matches: string[];   // What parts matched
-  matchPositions: {    // Positions of matches for highlighting
+  item: T; // The original item
+  score: number; // Score (higher is better match)
+  matches: string[]; // What parts matched
+  matchPositions: {
+    // Positions of matches for highlighting
     fieldName: string;
     indices: number[];
   }[];
@@ -26,19 +27,20 @@ export interface FuzzySearchResult<T> {
  */
 function tokenize(text: string): string[] {
   if (!text) return [];
-  return text.toLowerCase()
+  return text
+    .toLowerCase()
     .split(/\s+/)
-    .filter(token => token.length > 0);
+    .filter((token) => token.length > 0);
 }
 
 /**
  * Create an acronym from a string by taking the first character of each word
  */
 function getAcronym(text: string): string {
-  if (!text) return '';
+  if (!text) return "";
   return tokenize(text)
-    .map(word => word[0])
-    .join('');
+    .map((word) => word[0])
+    .join("");
 }
 
 /**
@@ -59,11 +61,7 @@ function editDistance(s1: string, s2: string): number {
       } else if (j > 0) {
         let newValue = costs[j - 1];
         if (s1.charAt(i - 1) !== s2.charAt(j - 1)) {
-          newValue = Math.min(
-            newValue,
-            lastValue,
-            costs[j]
-          ) + 1;
+          newValue = Math.min(newValue, lastValue, costs[j]) + 1;
         }
         costs[j - 1] = lastValue;
         lastValue = newValue;
@@ -101,7 +99,7 @@ function hasPrefixMatch(searchTerm: string, target: string): boolean {
   const targetTokens = tokenize(target);
   searchTerm = searchTerm.toLowerCase();
 
-  return targetTokens.some(token => token.startsWith(searchTerm));
+  return targetTokens.some((token) => token.startsWith(searchTerm));
 }
 
 /**
@@ -109,11 +107,16 @@ function hasPrefixMatch(searchTerm: string, target: string): boolean {
  * This helps with queries like "aws dash" matching "AWS dashboard admin"
  * or "cloud prod my" matching "Cloudwatch Production MyApp"
  */
-function hasSequentialWordMatch(searchTerms: string[], target: string): {matched: boolean; ratio: number; matchQuality: number} {
-  if (!searchTerms.length || !target) return {matched: false, ratio: 0, matchQuality: 0};
+function hasSequentialWordMatch(
+  searchTerms: string[],
+  target: string
+): { matched: boolean; ratio: number; matchQuality: number } {
+  if (!searchTerms.length || !target)
+    return { matched: false, ratio: 0, matchQuality: 0 };
 
   const targetTokens = tokenize(target);
-  if (!targetTokens.length) return {matched: false, ratio: 0, matchQuality: 0};
+  if (!targetTokens.length)
+    return { matched: false, ratio: 0, matchQuality: 0 };
 
   let matchCount = 0;
   let matchQuality = 0; // Track quality of matches (exact vs partial)
@@ -137,7 +140,8 @@ function hasSequentialWordMatch(searchTerms: string[], target: string): {matched
       // This handles partial matches like "cloud" matching "cloudwatch"
       const termQuality = calculatePartialMatchQuality(searchTerm, targetToken);
 
-      if (termQuality > 0.3 && termQuality > bestMatchQuality) { // Threshold for considering it a match
+      if (termQuality > 0.3 && termQuality > bestMatchQuality) {
+        // Threshold for considering it a match
         bestMatchQuality = termQuality;
         bestMatchIndex = i;
         found = true;
@@ -159,9 +163,13 @@ function hasSequentialWordMatch(searchTerms: string[], target: string): {matched
       for (let i = 0; i < targetTokens.length; i++) {
         if (matchedPositions.includes(i)) continue; // Skip already matched positions
 
-        const termQuality = calculatePartialMatchQuality(searchTerm, targetTokens[i]);
+        const termQuality = calculatePartialMatchQuality(
+          searchTerm,
+          targetTokens[i]
+        );
 
-        if (termQuality > 0.3 && termQuality > bestMatchQuality) { // Same threshold for consistency
+        if (termQuality > 0.3 && termQuality > bestMatchQuality) {
+          // Same threshold for consistency
           bestMatchQuality = termQuality;
           bestMatchIndex = i;
           found = true;
@@ -188,7 +196,7 @@ function hasSequentialWordMatch(searchTerms: string[], target: string): {matched
   return {
     matched: ratio > 0,
     ratio: ratio,
-    matchQuality: avgMatchQuality
+    matchQuality: avgMatchQuality,
   };
 }
 
@@ -196,7 +204,10 @@ function hasSequentialWordMatch(searchTerms: string[], target: string): {matched
  * Calculate how well a search term partially matches a target token
  * Returns a value between 0 and 1, where 1 is a perfect match
  */
-function calculatePartialMatchQuality(searchTerm: string, targetToken: string): number {
+function calculatePartialMatchQuality(
+  searchTerm: string,
+  targetToken: string
+): number {
   if (!searchTerm || !targetToken) return 0;
 
   searchTerm = searchTerm.toLowerCase();
@@ -208,13 +219,13 @@ function calculatePartialMatchQuality(searchTerm: string, targetToken: string): 
   // Prefix match (e.g., "cloud" matches "cloudwatch")
   if (targetToken.startsWith(searchTerm)) {
     // The longer the search term relative to the target, the better the match
-    return 0.7 + (0.3 * searchTerm.length / targetToken.length);
+    return 0.7 + (0.3 * searchTerm.length) / targetToken.length;
   }
 
   // Contains match (e.g., "watch" in "cloudwatch")
   if (targetToken.includes(searchTerm)) {
     // Not as good as prefix match, but still valuable
-    return 0.5 + (0.2 * searchTerm.length / targetToken.length);
+    return 0.5 + (0.2 * searchTerm.length) / targetToken.length;
   }
 
   // Calculate character-by-character similarity for very partial matches
@@ -236,7 +247,7 @@ function calculatePartialMatchQuality(searchTerm: string, targetToken: string): 
 
   // If we matched at least half the characters in sequence
   if (matchingChars >= searchTerm.length / 2) {
-    return 0.3 + (0.2 * matchingChars / searchTerm.length);
+    return 0.3 + (0.2 * matchingChars) / searchTerm.length;
   }
 
   // Very low quality match or no match
@@ -313,7 +324,8 @@ function calculateScore(
       if (sequentialMatch.matched) {
         // This is a major boost for sequential matches in titles - crucial for multi-word searches
         // Use both ratio and matchQuality to better score partial matches across multiple words
-        const combinedScore = sequentialMatch.ratio * (0.3 + 0.7 * sequentialMatch.matchQuality);
+        const combinedScore =
+          sequentialMatch.ratio * (0.3 + 0.7 * sequentialMatch.matchQuality);
         score += combinedScore * 350 * options.fieldWeight; // Increased weight (was 300)
       }
     }
@@ -373,13 +385,13 @@ export function fuzzySearch<T>(
     // Score each field
     for (const field of searchFields) {
       const fieldName = field.name;
-      const fieldValue = String(item[fieldName] || '');
-      const isTitle = String(fieldName).toLowerCase() === 'title';
+      const fieldValue = String(item[fieldName] || "");
+      const isTitle = String(fieldName).toLowerCase() === "title";
 
       // Overall field matching
       const fieldScore = calculateScore(sanitizedSearch, fieldValue, {
         fieldWeight: field.weight,
-        isTitle
+        isTitle,
       });
 
       totalScore += fieldScore;
@@ -390,7 +402,7 @@ export function fuzzySearch<T>(
 
         const tokenScore = calculateScore(token, fieldValue, {
           fieldWeight: field.weight / 2, // Reduce weight for token matches
-          isTitle
+          isTitle,
         });
 
         totalScore += tokenScore;
@@ -415,8 +427,10 @@ export function fuzzySearch<T>(
 
             for (const word of words) {
               // Check if the word starts with the token or if token starts with the word
-              if (word.startsWith(tokenLower) ||
-                  (tokenLower.length >= 2 && tokenLower.startsWith(word))) {
+              if (
+                word.startsWith(tokenLower) ||
+                (tokenLower.length >= 2 && tokenLower.startsWith(word))
+              ) {
                 indices.push(fieldValue.indexOf(word, wordPos));
               }
               // Check for partial matches where at least half the characters match in sequence
@@ -445,7 +459,7 @@ export function fuzzySearch<T>(
           if (indices.length > 0) {
             matchPositions.push({
               fieldName: String(fieldName),
-              indices
+              indices,
             });
 
             if (!matches.includes(fieldValue)) {
@@ -462,7 +476,7 @@ export function fuzzySearch<T>(
         item,
         score: totalScore,
         matches,
-        matchPositions
+        matchPositions,
       });
     }
   }
@@ -487,19 +501,19 @@ export function formatTextWithHighlights(
   matchPositions: number[],
   matchLength: number = 1
 ): { content: string; description: string } {
-  if (!text) return { content: '', description: '' };
+  if (!text) return { content: "", description: "" };
 
   // Handle empty positions array
   if (!matchPositions || matchPositions.length === 0) {
     // If no matches but text contains spaces, try to highlight word prefixes
-    if (text.includes(' ')) {
+    if (text.includes(" ")) {
       return highlightWordPrefixes(text);
     }
     return { content: text, description: text };
   }
 
   // Merge nearby match positions to avoid excessive highlighting
-  const mergedPositions: {start: number; end: number}[] = [];
+  const mergedPositions: { start: number; end: number }[] = [];
 
   // Sort positions in ascending order for merging
   const sortedPositions = [...matchPositions].sort((a, b) => a - b);
@@ -513,7 +527,8 @@ export function formatTextWithHighlights(
       const lastRange = mergedPositions[mergedPositions.length - 1];
 
       // If current position overlaps or is close to previous range, extend it
-      if (pos <= lastRange.end + 2) { // Allow a 2-character gap
+      if (pos <= lastRange.end + 2) {
+        // Allow a 2-character gap
         lastRange.end = Math.max(lastRange.end, matchEnd);
         continue;
       }
@@ -522,7 +537,7 @@ export function formatTextWithHighlights(
     // Add new range
     mergedPositions.push({
       start: pos,
-      end: matchEnd
+      end: matchEnd,
     });
   }
 
@@ -532,13 +547,15 @@ export function formatTextWithHighlights(
     const range = mergedPositions[i];
     highlighted =
       highlighted.substring(0, range.start) +
-      '<match>' + highlighted.substring(range.start, range.end) + '</match>' +
+      "<match>" +
+      highlighted.substring(range.start, range.end) +
+      "</match>" +
       highlighted.substring(range.end);
   }
 
   return {
     content: text,
-    description: highlighted
+    description: highlighted,
   };
 }
 
@@ -546,7 +563,10 @@ export function formatTextWithHighlights(
  * Highlight the first few characters of each word in multi-word text
  * Useful for partial matches like "cloud prod my" -> "Cloudwatch Production MyApp"
  */
-function highlightWordPrefixes(text: string): { content: string; description: string } {
+function highlightWordPrefixes(text: string): {
+  content: string;
+  description: string;
+} {
   const words = text.split(/\s+/);
   let highlighted = text;
 
@@ -566,13 +586,15 @@ function highlightWordPrefixes(text: string): { content: string; description: st
 
       highlighted =
         highlighted.substring(0, wordPos) +
-        '<match>' + highlighted.substring(wordPos, wordPos + charsToHighlight) + '</match>' +
+        "<match>" +
+        highlighted.substring(wordPos, wordPos + charsToHighlight) +
+        "</match>" +
         highlighted.substring(wordPos + charsToHighlight);
     }
   }
 
   return {
     content: text,
-    description: highlighted
+    description: highlighted,
   };
 }

@@ -9,6 +9,14 @@ import { StorageService } from "../utils/storage";
 // Maximum number of suggestions to show in omnibox
 const MAX_SUGGESTIONS = 8;
 
+interface SearchMatch {
+  item: Bookmark;
+  matchPositions: Array<{
+    fieldName: string;
+    indices: Array<[number, number]>; // tuple of [startIndex, length]
+  }>;
+}
+
 export class OmniboxService {
   private isInitialized = false;
   private storageService: StorageService;
@@ -29,13 +37,19 @@ export class OmniboxService {
 
     try {
       // Register event listeners
-      chrome.omnibox.onInputStarted.addListener(this.handleInputStarted.bind(this));
-      chrome.omnibox.onInputChanged.addListener(this.handleInputChanged.bind(this));
-      chrome.omnibox.onInputEntered.addListener(this.handleInputEntered.bind(this));
+      chrome.omnibox.onInputStarted.addListener(
+        this.handleInputStarted.bind(this)
+      );
+      chrome.omnibox.onInputChanged.addListener(
+        this.handleInputChanged.bind(this)
+      );
+      chrome.omnibox.onInputEntered.addListener(
+        this.handleInputEntered.bind(this)
+      );
 
       // Set default suggestion
       chrome.omnibox.setDefaultSuggestion({
-        description: "Search your MarkZen bookmarks"
+        description: "Search your MarkZen bookmarks",
       });
 
       this.isInitialized = true;
@@ -56,12 +70,12 @@ export class OmniboxService {
 
       // Set default suggestion
       chrome.omnibox.setDefaultSuggestion({
-        description: "Search your MarkZen bookmarks"
+        description: "Search your MarkZen bookmarks",
       });
     } catch (error) {
       console.error("Error in omnibox input started handler:", error);
       chrome.omnibox.setDefaultSuggestion({
-        description: "Error loading bookmarks: " + (error as Error).message
+        description: "Error loading bookmarks: " + (error as Error).message,
       });
     }
   }
@@ -89,79 +103,54 @@ export class OmniboxService {
       const results = this.searchBookmarks(text);
 
       // Convert to omnibox suggestions
-      const suggestions = results.map(result => {
+      const suggestions = results.map((result) => {
         const bookmark = result.item;
-        const workspace = this.workspaces[bookmark.workspaceId]?.name || "Unknown";
+        const workspace =
+          this.workspaces[bookmark.workspaceId]?.name || "Unknown";
+        const query = text.toLowerCase().trim();
 
-        // Format the title with highlights
-        const titleMatches = result.matchPositions
-          .filter(pos => pos.fieldName === 'title')
-          .flatMap(pos => pos.indices);
+        // Create simple highlighted title
+        const titleIndex = bookmark.title.toLowerCase().indexOf(query);
+        const title = this.escapeXml(bookmark.title);
+        const highlightedTitle =
+          titleIndex !== -1
+            ? `${title.slice(0, titleIndex)}<match>${title.slice(
+                titleIndex,
+                titleIndex + query.length
+              )}</match>${title.slice(titleIndex + query.length)}`
+            : title;
 
-        // Parse search tokens and determine highlighting approach
-        const searchTokens = text.trim().split(/\s+/).filter(t => t.length > 0);
-        const isMultiWordSearch = searchTokens.length > 1;
-
-        // Calculate variable match length based on search tokens
-        let matchLength = text.length; // Default for single word
-
-        if (isMultiWordSearch) {
-          // For multi-word searches, base highlight length on the average token length
-          // but with a minimum to ensure visibility
-          const avgTokenLength = searchTokens.reduce((sum, token) => sum + token.length, 0) / searchTokens.length;
-          matchLength = Math.max(2, Math.ceil(avgTokenLength));
-        }
-
-        // Special case for short prefixes (like 1-2 character searches)
-        const hasShortToken = searchTokens.some(token => token.length <= 2);
-        if (hasShortToken) {
-          // For short tokens, make sure we highlight at least 2-3 characters
-          matchLength = Math.max(matchLength, 2);
-        }
-
-        const formattedTitle = formatTextWithHighlights(
-          bookmark.title,
-          titleMatches,
-          matchLength
-        );
-
-        // Format URL with highlights (truncated if needed)
-        const urlMatches = result.matchPositions
-          .filter(pos => pos.fieldName === 'url')
-          .flatMap(pos => pos.indices);
-
-        let displayUrl = bookmark.url;
-        if (displayUrl.length > 50) {
-          displayUrl = displayUrl.substring(0, 47) + '...';
-        }
-
-        const formattedUrl = formatTextWithHighlights(
-          displayUrl,
-          urlMatches,
-          matchLength // Use the same matchLength variable for consistency
-        );
-
-        // Also check for matches in description and tags for completeness
-        const hasDescriptionMatch = result.matchPositions.some(pos => pos.fieldName === 'description');
-        const hasTagMatch = result.matchPositions.some(pos => pos.fieldName === 'tags');
-
-        // Create description with title and URL
-        const description = `${formattedTitle.description} <dim>(${workspace})</dim> <url>${formattedUrl.description}</url>`;
+        // Create simple highlighted URL
+        const truncatedUrl = this.truncateUrl(bookmark.url);
+        const displayUrl = this.escapeXml(truncatedUrl);
+        const urlIndex = displayUrl.toLowerCase().indexOf(query);
+        const highlightedUrl =
+          urlIndex !== -1
+            ? `${displayUrl.slice(0, urlIndex)}<match>${displayUrl.slice(
+                urlIndex,
+                urlIndex + query.length
+              )}</match>${displayUrl.slice(urlIndex + query.length)}`
+            : displayUrl;
 
         return {
           content: bookmark.url,
-          description,
-          deletable: false
+          description: `${highlightedTitle} <dim>(${this.escapeXml(
+            workspace
+          )})</dim> <url>${highlightedUrl}</url>`,
+          deletable: false,
         };
       });
 
       // Add a hint suggestion if no matches found
       if (suggestions.length === 0) {
-        suggest([{
-          content: "no_results",
-          description: "No bookmarks found matching: <match>" + text + "</match>",
-          deletable: false
-        }]);
+        suggest([
+          {
+            content: "no_results",
+            description:
+              "No bookmarks found matching: <match>" + text + "</match>",
+            deletable: false,
+          },
+        ]);
         return;
       }
 
@@ -169,11 +158,13 @@ export class OmniboxService {
       suggest(suggestions.slice(0, MAX_SUGGESTIONS));
     } catch (error) {
       console.error("Error in omnibox input changed handler:", error);
-      suggest([{
-        content: "error",
-        description: "Error searching bookmarks: " + (error as Error).message,
-        deletable: false
-      }]);
+      suggest([
+        {
+          content: "error",
+          description: "Error searching bookmarks: " + (error as Error).message,
+          deletable: false,
+        },
+      ]);
     }
   }
 
@@ -191,7 +182,9 @@ export class OmniboxService {
       }
 
       // Find the bookmark by URL
-      const bookmark = Object.values(this.bookmarks).find(b => b.url === text);
+      const bookmark = Object.values(this.bookmarks).find(
+        (b) => b.url === text
+      );
 
       // Track bookmark click if found
       if (bookmark) {
@@ -232,46 +225,99 @@ export class OmniboxService {
   }
 
   /**
-   * Search bookmarks using fuzzy search
+   * Search bookmarks using simple string matching first
    */
-  private searchBookmarks(query: string) {
-    // Convert bookmarks object to array for searching
+  private searchBookmarks(query: string): SearchMatch[] {
     const bookmarksArray = Object.values(this.bookmarks);
+    const searchQuery = query.toLowerCase().trim();
 
-    // Determine if this is likely a multi-word search
-    const searchTokens = query.trim().split(/\s+/);
-    const isMultiWordSearch = searchTokens.length > 1;
+    // Filter bookmarks that match the query
+    const matchedBookmarks = bookmarksArray.filter((bookmark) => {
+      const titleMatch = bookmark.title.toLowerCase().includes(searchQuery);
+      const urlMatch = bookmark.url.toLowerCase().includes(searchQuery);
+      return titleMatch || urlMatch;
+    });
 
-    // For partial word matching like "cloud prod my", we need an even lower threshold
-    // The more words, the lower the threshold should be
-    let threshold = 5; // Default for single word searches
+    // Sort by relevance (title matches first, then URL matches)
+    matchedBookmarks.sort((a, b) => {
+      const aTitleMatch = a.title.toLowerCase().includes(searchQuery);
+      const bTitleMatch = b.title.toLowerCase().includes(searchQuery);
 
-    if (isMultiWordSearch) {
-      // Base threshold of 3 for two words, then decrease further for more words
-      threshold = Math.max(1, 3 - (searchTokens.length - 2) * 0.5);
+      if (aTitleMatch && !bTitleMatch) return -1;
+      if (!aTitleMatch && bTitleMatch) return 1;
 
-      // If the query contains very short terms (1-2 chars), lower threshold further
-      const hasShortTerms = searchTokens.some(token => token.length < 3);
-      if (hasShortTerms) {
-        threshold *= 0.8;
+      return a.title.localeCompare(b.title);
+    });
+
+    // Convert to SearchMatch format
+    return matchedBookmarks
+      .map((bookmark) => {
+        const titleIndex = bookmark.title.toLowerCase().indexOf(searchQuery);
+        const urlIndex = bookmark.url.toLowerCase().indexOf(searchQuery);
+
+        const matches: SearchMatch["matchPositions"] = [];
+
+        if (titleIndex !== -1) {
+          matches.push({
+            fieldName: "title",
+            indices: [[titleIndex, searchQuery.length]],
+          });
+        }
+
+        if (urlIndex !== -1) {
+          matches.push({
+            fieldName: "url",
+            indices: [[urlIndex, searchQuery.length]],
+          });
+        }
+
+        // Truncate and clean the URL for display
+        const displayUrl = this.truncateUrl(bookmark.url);
+
+        return {
+          item: {
+            ...bookmark,
+            displayUrl, // Add this new property for display purposes
+          },
+          matchPositions: matches,
+        };
+      })
+      .slice(0, MAX_SUGGESTIONS);
+  }
+
+  // Add this new method to escape XML special characters
+  private escapeXml(unsafe: string): string {
+    return unsafe.replace(/[<>&'"]/g, (c) => {
+      switch (c) {
+        case "&lt;":
+          return "&lt;";
+        case "&gt;":
+          return "&gt;";
+        case "&amp;":
+          return "&amp;";
+        case "'":
+          return "&apos;";
+        case '"':
+          return "&quot;";
+        default:
+          return c;
       }
+    });
+  }
+
+  // Add this new method to truncate and clean URLs
+  private truncateUrl(url: string): string {
+    try {
+      const parsedUrl = new URL(url);
+      let cleanUrl = `${parsedUrl.protocol}//${parsedUrl.hostname}${parsedUrl.pathname}`;
+      if (cleanUrl.length > 50) {
+        cleanUrl = cleanUrl.substring(0, 47) + "...";
+      }
+      return cleanUrl;
+    } catch (error) {
+      console.error("Error parsing URL:", error);
+      return url.length > 50 ? url.substring(0, 47) + "..." : url;
     }
-
-    // Search with our fuzzy search utility
-    return fuzzySearch(
-      bookmarksArray,
-      [
-        { name: 'title', weight: 3.0 },  // Title is most important, boost further (was 2.5)
-        { name: 'url', weight: 0.7 },    // URL is next
-        { name: 'description', weight: 0.4 }, // Description less important
-        { name: 'tags', weight: 0.8 }    // Add tags as a searchable field
-      ],
-      query,
-      {
-        limit: MAX_SUGGESTIONS,
-        threshold: threshold
-      }
-    );
   }
 }
 
