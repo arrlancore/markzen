@@ -1,13 +1,3 @@
-// fuzzy-search.ts
-// A utility to perform advanced fuzzy searching on bookmarks
-//
-// This implementation provides smart multi-word matching for bookmark searching,
-// allowing queries like "aws dash" to find "AWS dashboard admin" by:
-// 1. Supporting sequential word matching with skipped words
-// 2. Applying prefix matching for partial words
-// 3. Implementing special handling for title fields
-// 4. Using dynamic thresholds for different query types
-
 /**
  * Interface for a search match result
  */
