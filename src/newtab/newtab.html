@@ -181,7 +181,7 @@
       <div class="modal-container">
         <div class="modal-header">
           <h2 class="modal-title">Open Default Bookmarks</h2>
-          <button id="close-modal-btn" class="modal-close">
+          <button id="close-modal-btn" class="modal-close" data-close-modal>
             <svg
               width="16"
               height="16"
@@ -218,24 +218,29 @@
           </div>
         </div>
         <div class="modal-footer">
-          <button
-            id="open-defaults-cancel-btn"
-            class="modal-button cancel-button"
-          >
-            Cancel
-          </button>
-          <button
-            id="open-defaults-same-window-btn"
-            class="modal-button primary-button"
-          >
-            Current Window
-          </button>
-          <button
-            id="open-defaults-new-window-btn"
-            class="modal-button primary-button"
-          >
-            New Window
-          </button>
+          <div class="modal-actions">
+            <div class="right-actions">
+              <button
+                id="open-defaults-cancel-btn"
+                class="button secondary-button"
+                data-close-modal
+              >
+                Cancel
+              </button>
+              <button
+                id="open-defaults-same-window-btn"
+                class="button primary-button"
+              >
+                Current Window
+              </button>
+              <button
+                id="open-defaults-new-window-btn"
+                class="button primary-button"
+              >
+                New Window
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     </div>

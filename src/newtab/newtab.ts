@@ -113,8 +113,9 @@ async function initNewTab() {
     await themeService.applyThemeFromSettings();
 
     // Apply placeholder gradient immediately for instant visual feedback
-    document.body.style.background = 'linear-gradient(-45deg, #1e2235, #2a2a3c, #0f172a, #1e293b)';
-    document.body.style.backgroundSize = '400% 400%';
+    document.body.style.background =
+      "linear-gradient(-45deg, #1e2235, #2a2a3c, #0f172a, #1e293b)";
+    document.body.style.backgroundSize = "cover";
 
     // Then load background image
     setRandomBackground();
@@ -182,20 +183,22 @@ async function loadWorkspaceInfo(): Promise<void> {
 // Set random background image
 function setRandomBackground() {
   // Try to get cached image first
-  const cachedImage = localStorage.getItem('markzen-last-background');
+  const cachedImage = localStorage.getItem("markzen-last-background");
   if (cachedImage && navigator.onLine) {
     // Use cached image immediately
     document.body.style.backgroundImage = `url(${cachedImage})`;
 
     // Get the corresponding background image info for photo credit
     try {
-      const cachedImageInfo = JSON.parse(localStorage.getItem('markzen-last-background-info') || '{}');
+      const cachedImageInfo = JSON.parse(
+        localStorage.getItem("markzen-last-background-info") || "{}"
+      );
       if (cachedImageInfo.photographer && cachedImageInfo.profileUrl) {
         currentBackgroundImage = cachedImageInfo;
         renderPhotoCredit();
       }
     } catch (e) {
-      console.warn('Could not parse cached image info', e);
+      console.warn("Could not parse cached image info", e);
     }
 
     // Then load a new image in the background for next time
@@ -213,7 +216,7 @@ function setRandomBackground() {
 function loadNewBackgroundImage() {
   // Check if offline
   if (!navigator.onLine) {
-    console.log('Offline, using fallback gradient background');
+    console.log("Offline, using fallback gradient background");
     // Keep using the gradient background that was set in initNewTab
     return;
   }
@@ -238,19 +241,22 @@ function loadNewBackgroundImage() {
 
       // Cache for next time
       try {
-        localStorage.setItem('markzen-last-background', optimizedUrl);
-        localStorage.setItem('markzen-last-background-info', JSON.stringify({
-          url: currentBackgroundImage?.url,
-          photographer: currentBackgroundImage?.photographer,
-          profileUrl: currentBackgroundImage?.profileUrl
-        }));
+        localStorage.setItem("markzen-last-background", optimizedUrl);
+        localStorage.setItem(
+          "markzen-last-background-info",
+          JSON.stringify({
+            url: currentBackgroundImage?.url,
+            photographer: currentBackgroundImage?.photographer,
+            profileUrl: currentBackgroundImage?.profileUrl,
+          })
+        );
       } catch (e) {
-        console.warn('Could not cache background image', e);
+        console.warn("Could not cache background image", e);
       }
     };
 
     img.onerror = () => {
-      console.error('Failed to load background image:', optimizedUrl);
+      console.error("Failed to load background image:", optimizedUrl);
       // Keep the gradient background on error
     };
 
@@ -566,19 +572,19 @@ function renderWorkspaceSelector(): void {
         workspaceOption.classList.add("selected");
       }
 
-      // Create name element
-      const nameDiv = document.createElement("div");
-      nameDiv.className = "workspace-name";
-      nameDiv.textContent = workspaceInfo.name;
+      // Create a single span for the name
+      const nameSpan = document.createElement("span");
+      nameSpan.className = "workspace-name";
+      nameSpan.textContent = workspaceInfo.name;
 
-      // Create count element
-      const countDiv = document.createElement("div");
-      countDiv.className = "workspace-count";
-      countDiv.textContent = workspaceInfo.count.toString();
+      // Create count element as a span (simpler than a div)
+      const countSpan = document.createElement("span");
+      countSpan.className = "workspace-count";
+      countSpan.textContent = workspaceInfo.count.toString();
 
       // Append elements to workspace option
-      workspaceOption.appendChild(nameDiv);
-      workspaceOption.appendChild(countDiv);
+      workspaceOption.appendChild(nameSpan);
+      workspaceOption.appendChild(countSpan);
 
       // Add click event
       workspaceOption.addEventListener("click", async () => {
@@ -590,11 +596,9 @@ function renderWorkspaceSelector(): void {
         // Add selected class to this option
         workspaceOption.classList.add("selected");
 
-        // Update selected workspace ID
-        // Get the workspace ID
+        // Get the workspace ID and update selection
         const clickedWorkspaceId = workspaceOption.dataset.id;
         if (clickedWorkspaceId) {
-          // Update workspace selection
           await updateWorkspaceSelection(clickedWorkspaceId);
         }
       });
@@ -878,17 +882,15 @@ function addEventListeners() {
     openAllDefaultsBtn.addEventListener("click", handleOpenAllDefaults);
   }
 
-  if (closeModalBtn) {
-    closeModalBtn.addEventListener("click", () =>
-      openDefaultsModal.classList.remove("active")
-    );
-  }
-
-  if (openDefaultsCancelBtn) {
-    openDefaultsCancelBtn.addEventListener("click", () =>
-      openDefaultsModal.classList.remove("active")
-    );
-  }
+  // Handle all elements with data-close-modal attribute
+  document.querySelectorAll("[data-close-modal]").forEach((closeButton) => {
+    closeButton.addEventListener("click", () => {
+      const modal = closeButton.closest(".modal");
+      if (modal) {
+        modal.classList.remove("active");
+      }
+    });
+  });
 
   if (openDefaultsSameWindowBtn) {
     openDefaultsSameWindowBtn.addEventListener(
