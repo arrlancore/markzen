@@ -111,6 +111,12 @@ async function initNewTab() {
     await storageService.initialize();
 
     await themeService.applyThemeFromSettings();
+
+    // Apply placeholder gradient immediately for instant visual feedback
+    document.body.style.background = 'linear-gradient(-45deg, #1e2235, #2a2a3c, #0f172a, #1e293b)';
+    document.body.style.backgroundSize = '400% 400%';
+
+    // Then load background image
     setRandomBackground();
 
     updateClock();
@@ -175,12 +181,81 @@ async function loadWorkspaceInfo(): Promise<void> {
 
 // Set random background image
 function setRandomBackground() {
+  // Try to get cached image first
+  const cachedImage = localStorage.getItem('markzen-last-background');
+  if (cachedImage && navigator.onLine) {
+    // Use cached image immediately
+    document.body.style.backgroundImage = `url(${cachedImage})`;
+
+    // Get the corresponding background image info for photo credit
+    try {
+      const cachedImageInfo = JSON.parse(localStorage.getItem('markzen-last-background-info') || '{}');
+      if (cachedImageInfo.photographer && cachedImageInfo.profileUrl) {
+        currentBackgroundImage = cachedImageInfo;
+        renderPhotoCredit();
+      }
+    } catch (e) {
+      console.warn('Could not parse cached image info', e);
+    }
+
+    // Then load a new image in the background for next time
+    setTimeout(() => {
+      loadNewBackgroundImage();
+    }, 1000);
+    return;
+  }
+
+  // No cached image or offline, load a new one
+  loadNewBackgroundImage();
+}
+
+// Load a new background image with optimizations
+function loadNewBackgroundImage() {
+  // Check if offline
+  if (!navigator.onLine) {
+    console.log('Offline, using fallback gradient background');
+    // Keep using the gradient background that was set in initNewTab
+    return;
+  }
+
   const randomIndex = Math.floor(Math.random() * backgroundImages.length);
   currentBackgroundImage = backgroundImages[randomIndex];
 
   if (currentBackgroundImage) {
-    document.body.style.backgroundImage = `url(${currentBackgroundImage.url})`;
-    renderPhotoCredit();
+    // Get viewport dimensions for appropriate sizing
+    const width = window.innerWidth;
+    const height = window.innerHeight;
+
+    // Create optimized image URL with size parameters
+    const optimizedUrl = `${currentBackgroundImage.url}?w=${width}&h=${height}&q=80&fm=webp&fit=crop`;
+
+    // Create an image element to preload
+    const img = new Image();
+    img.onload = () => {
+      // Once loaded, set as background
+      document.body.style.backgroundImage = `url(${optimizedUrl})`;
+      renderPhotoCredit();
+
+      // Cache for next time
+      try {
+        localStorage.setItem('markzen-last-background', optimizedUrl);
+        localStorage.setItem('markzen-last-background-info', JSON.stringify({
+          url: currentBackgroundImage?.url,
+          photographer: currentBackgroundImage?.photographer,
+          profileUrl: currentBackgroundImage?.profileUrl
+        }));
+      } catch (e) {
+        console.warn('Could not cache background image', e);
+      }
+    };
+
+    img.onerror = () => {
+      console.error('Failed to load background image:', optimizedUrl);
+      // Keep the gradient background on error
+    };
+
+    // Start loading the image
+    img.src = optimizedUrl;
   }
 }
 
