@@ -4,17 +4,10 @@
 import { Bookmark } from "../models/bookmark";
 import { Workspace } from "../models/workspace";
 import { StorageService } from "../utils/storage";
+import { fuzzySearch, SearchMatch } from "../utils/fuzzy-search";
 
 // Maximum number of suggestions to show in omnibox
 const MAX_SUGGESTIONS = 8;
-
-interface SearchMatch {
-  item: Bookmark;
-  matchPositions: Array<{
-    fieldName: string;
-    indices: Array<[number, number]>; // tuple of [startIndex, length]
-  }>;
-}
 
 export class OmniboxService {
   private isInitialized = false;
@@ -106,30 +99,18 @@ export class OmniboxService {
         const bookmark = result.item;
         const workspace =
           this.workspaces[bookmark.workspaceId]?.name || "Unknown";
-        const query = text.toLowerCase().trim();
 
-        // Create simple highlighted title
-        const titleIndex = bookmark.title.toLowerCase().indexOf(query);
-        const title = this.escapeXml(bookmark.title);
-        const highlightedTitle =
-          titleIndex !== -1
-            ? `${title.slice(0, titleIndex)}<match>${title.slice(
-                titleIndex,
-                titleIndex + query.length
-              )}</match>${title.slice(titleIndex + query.length)}`
-            : title;
+        // Generate highlighted title and URL
+        const highlightedTitle = this.generateHighlightedText(
+          bookmark.title,
+          result.matchPositions.find(m => m.fieldName === "title")?.indices || []
+        );
 
-        // Create simple highlighted URL
         const truncatedUrl = this.truncateUrl(bookmark.url);
-        const displayUrl = this.escapeXml(truncatedUrl);
-        const urlIndex = displayUrl.toLowerCase().indexOf(query);
-        const highlightedUrl =
-          urlIndex !== -1
-            ? `${displayUrl.slice(0, urlIndex)}<match>${displayUrl.slice(
-                urlIndex,
-                urlIndex + query.length
-              )}</match>${displayUrl.slice(urlIndex + query.length)}`
-            : displayUrl;
+        const highlightedUrl = this.generateHighlightedText(
+          truncatedUrl,
+          result.matchPositions.find(m => m.fieldName === "url")?.indices || []
+        );
 
         return {
           content: bookmark.url,
@@ -146,7 +127,7 @@ export class OmniboxService {
           {
             content: "no_results",
             description:
-              "No bookmarks found matching: <match>" + text + "</match>",
+              "No bookmarks found matching: <match>" + this.escapeXml(text) + "</match>",
             deletable: false,
           },
         ]);
@@ -154,7 +135,7 @@ export class OmniboxService {
       }
 
       // Provide suggestions
-      suggest(suggestions.slice(0, MAX_SUGGESTIONS));
+      suggest(suggestions);
     } catch (error) {
       console.error("Error in omnibox input changed handler:", error);
       suggest([
@@ -165,6 +146,40 @@ export class OmniboxService {
         },
       ]);
     }
+  }
+
+  /**
+   * Generate highlighted text with match tags for omnibox display
+   */
+  private generateHighlightedText(text: string, matches: Array<[number, number]>): string {
+    if (!matches.length) {
+      return this.escapeXml(text);
+    }
+
+    // Sort matches by start position
+    const sortedMatches = [...matches].sort((a, b) => a[0] - b[0]);
+
+    let result = '';
+    let lastIndex = 0;
+
+    for (const [start, length] of sortedMatches) {
+      // Add text before match
+      if (start > lastIndex) {
+        result += this.escapeXml(text.substring(lastIndex, start));
+      }
+
+      // Add highlighted match
+      result += '<match>' + this.escapeXml(text.substring(start, start + length)) + '</match>';
+
+      lastIndex = start + length;
+    }
+
+    // Add remaining text after last match
+    if (lastIndex < text.length) {
+      result += this.escapeXml(text.substring(lastIndex));
+    }
+
+    return result;
   }
 
   /**
@@ -224,87 +239,26 @@ export class OmniboxService {
   }
 
   /**
-   * Search bookmarks using simple string matching first
+   * Search bookmarks using fuzzy search
    */
   private searchBookmarks(query: string): SearchMatch[] {
     const bookmarksArray = Object.values(this.bookmarks);
-    const searchQuery = query.toLowerCase().trim();
 
-    // Filter bookmarks that match the query
-    const matchedBookmarks = bookmarksArray.filter((bookmark) => {
-      const titleMatch = bookmark.title.toLowerCase().includes(searchQuery);
-      const urlMatch = bookmark.url.toLowerCase().includes(searchQuery);
-      return titleMatch || urlMatch;
-    });
-
-    // Sort by relevance (title matches first, then URL matches)
-    matchedBookmarks.sort((a, b) => {
-      const aTitleMatch = a.title.toLowerCase().includes(searchQuery);
-      const bTitleMatch = b.title.toLowerCase().includes(searchQuery);
-
-      if (aTitleMatch && !bTitleMatch) return -1;
-      if (!aTitleMatch && bTitleMatch) return 1;
-
-      return a.title.localeCompare(b.title);
-    });
-
-    // Convert to SearchMatch format
-    return matchedBookmarks
-      .map((bookmark) => {
-        const titleIndex = bookmark.title.toLowerCase().indexOf(searchQuery);
-        const urlIndex = bookmark.url.toLowerCase().indexOf(searchQuery);
-
-        const matches: SearchMatch["matchPositions"] = [];
-
-        if (titleIndex !== -1) {
-          matches.push({
-            fieldName: "title",
-            indices: [[titleIndex, searchQuery.length]],
-          });
-        }
-
-        if (urlIndex !== -1) {
-          matches.push({
-            fieldName: "url",
-            indices: [[urlIndex, searchQuery.length]],
-          });
-        }
-
-        // Truncate and clean the URL for display
-        const displayUrl = this.truncateUrl(bookmark.url);
-
-        return {
-          item: {
-            ...bookmark,
-            displayUrl, // Add this new property for display purposes
-          },
-          matchPositions: matches,
-        };
-      })
-      .slice(0, MAX_SUGGESTIONS);
+    // Use our new fuzzy search function
+    return fuzzySearch(bookmarksArray, query, MAX_SUGGESTIONS);
   }
 
-  // Add this new method to escape XML special characters
+  // Escape XML special characters
   private escapeXml(unsafe: string): string {
-    return unsafe.replace(/[<>&'"]/g, (c) => {
-      switch (c) {
-        case "&lt;":
-          return "&lt;";
-        case "&gt;":
-          return "&gt;";
-        case "&amp;":
-          return "&amp;";
-        case "'":
-          return "&apos;";
-        case '"':
-          return "&quot;";
-        default:
-          return c;
-      }
-    });
+    return unsafe
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/'/g, "&apos;")
+      .replace(/"/g, "&quot;");
   }
 
-  // Add this new method to truncate and clean URLs
+  // Truncate and clean URLs
   private truncateUrl(url: string): string {
     try {
       const parsedUrl = new URL(url);
