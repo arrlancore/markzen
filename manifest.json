@@ -2,9 +2,8 @@
   "manifest_version": 3,
   "name": "MarkZen",
   "version": "1.0.0",
-  "description": "Kanban-style bookmark manager with enhanced new tab experience",
-  "permissions": ["storage", "tabs", "bookmarks", "scripting", "omnibox", "notifications"],
-  "host_permissions": ["<all_urls>"],
+  "description": "Visual bookmark management reimagined: Kanban boards, smart search, and serene new tabs",
+  "permissions": ["storage", "tabs", "bookmarks", "scripting", "omnibox", "notifications", "activeTab"],
   "omnibox": { "keyword": "mz" },
   "action": {
     "default_popup": "popup.html",

@@ -1,7 +1,7 @@
 {
   "name": "markzen",
   "version": "1.0.0",
-  "description": "Kanban-style bookmark manager with enhanced new tab experience",
+  "description": "Visual bookmark management reimagined: Kanban boards, smart search, and serene new tabs",
   "scripts": {
     "start": "webpack serve --config webpack.config.js --mode=development",
     "build": "webpack --config webpack.config.js --mode=production",
