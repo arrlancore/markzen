@@ -3,7 +3,6 @@
 
 import { Bookmark } from "../models/bookmark";
 import { Workspace } from "../models/workspace";
-import { fuzzySearch, formatTextWithHighlights } from "../utils/fuzzy-search";
 import { StorageService } from "../utils/storage";
 
 // Maximum number of suggestions to show in omnibox
